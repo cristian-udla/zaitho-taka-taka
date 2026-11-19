@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zaitho Studio — Pruebas en Línea & Compilador APK</title>
+<style>
+:root {
+    --bg: #07090e;
+    --card: #111622;
+    --cyan: #00F2FF;
+    --emerald: #00FFAA;
+    --text: #F0F4F8;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    padding: 20px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+}
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+h1 {
+    color: var(--cyan);
+    margin: 0 0 6px 0;
+    font-size: 24px;
+}
+.sub {
+    opacity: 0.75;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+.card {
+    background: var(--card);
+    border: 1px solid rgba(0, 242, 255, 0.22);
+    border-radius: 16px;
+    padding: 18px;
+}
+.card h2 {
+    margin: 0 0 10px 0;
+    font-size: 15px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.btn {
+    display: inline-block;
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--cyan);
+    color: #000;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 8px;
+}
+.btn.secondary {
+    background: rgba(0, 242, 255, 0.12);
+    color: #fff;
+    border: 1px solid var(--cyan);
+}
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: #090c14;
+    border: 1px solid #2a344a;
+    color: #fff;
+    border-radius: 8px;
+    font-size: 13px;
+}
+.qr-box {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: rgba(0,0,0,0.35);
+    padding: 10px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+}
+code {
+    background: #000;
+    color: var(--emerald);
+    padding: 3px 6px;
+    border-radius: 5px;
+    font-size: 12px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>🤖 ZAITHO — Laboratorio en Línea & APK</h1>
+    <div class="sub">Prueba el robot en tu celular en tiempo real, envíale notificaciones de WhatsApp/Correo y descarga tu APK.</div>
+
+    <div class="grid">
+        <!-- 1. PROBAR EN EL CELULAR AHORA MISMO -->
+        <div class="card">
+            <h2>📱 1. Abrir / Instalar en tu Celular Ya</h2>
+            <p style="font-size:13px; opacity:0.85;">
+                Abre cualquiera de estos enlaces en <b>Chrome de tu Android</b> y toca <b>"Añadir a pantalla de inicio / Instalar aplicación"</b> para convertirlo en una WebAPK a pantalla completa con Bluetooth BLE y Voz:
+            </p>
+            <p style="font-size:13px;">
+                🔹 Red Local Wi-Fi: <code>http://10.112.71.38:3002</code><br>
+                🔹 Red Tailscale: <code>http://100.92.200.34:3002</code>
+            </p>
+            <a class="btn" href="/">👁️ Abrir Cara del Robot Zaitho</a>
+        </div>
+
+        <!-- 2. ENVIAR WHATSAPP / CORREO EN VIVO A ZAITHO -->
+        <div class="card">
+            <h2>💬 2. Disparar WhatsApp o Correo a Zaitho</h2>
+            <p style="font-size:12px; opacity:0.8;">
+                Envía una notificación real al robot mientras está abierto en tu celular: Zaitho mirará hacia arriba al holograma flotante sobre sus ojos, moverá sus ruedas y te leerá el mensaje.
+            </p>
+            <select id="n-app">
+                <option value="WhatsApp|💬">💬 WhatsApp</option>
+                <option value="Gmail|📧">📧 Correo (Gmail)</option>
+                <option value="Telegram|✈️">✈️ Telegram</option>
+                <option value="Instagram|📸">📸 Instagram</option>
+            </select>
+            <input id="n-sender" type="text" value="Carlos" placeholder="Remitente (ej. Mamá, Jefe, GitHub)">
+            <input id="n-msg" type="text" value="¡El chasis ESP32-S3 ya se mueve increíble!" placeholder="Mensaje...">
+            <button class="btn" onclick="sendNotif()">🚀 Enviar Notificación a los Ojos de Zaitho</button>
+            <div id="n-status" style="font-size:12px; color:var(--emerald); margin-top:6px;"></div>
+        </div>
+
+        <!-- 3. COMPILACIÓN APK EN LA NUBE (GITHUB ACTIONS + ANDROID NATIVO) -->
+        <div class="card">
+            <h2>☁️ 3. Compilar APK Nativa Gratis en la Nube</h2>
+            <p style="font-size:12px; opacity:0.85;">
+                El proyecto Android Nativo en <code>ZAITHO_HW_ESP32_S3/android-apk</code> incluye:
+                <br>✅ Puente BLE Nativo para <code>ZAITHO_ROBOT</code>
+                <br>✅ Escucha de notificaciones reales de <b>WhatsApp y Gmail</b> del sistema Android
+                <br>✅ Reconocimiento de voz continuo y cámara oculta
+                <br>✅ Workflow <code>.github/workflows/build-apk.yml</code> listo para compilar gratis en GitHub Actions.
+            </p>
+            <a class="btn secondary" href="/" onclick="localStorage.clear()">🔄 Refrescar Cerebro OTA</a>
+        </div>
+    </div>
+</div>
+
+<script>
+async function sendNotif() {
+    const [appName, icon] = document.getElementById('n-app').value.split('|');
+    const sender = document.getElementById('n-sender').value;
+    const message = document.getElementById('n-msg').value;
+    const res = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appName, sender, message, icon })
+    });
+    if (res.ok) {
+        document.getElementById('n-status').textContent = '✅ ¡Enviado! Mira los ojos de Zaitho en el celular.';
+    }
+}
+</script>
+</body>
+</html>

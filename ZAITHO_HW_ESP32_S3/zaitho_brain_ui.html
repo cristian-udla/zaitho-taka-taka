@@ -1,0 +1,2558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<title>ZAITHO — Vector AI Robot</title>
+<style>
+:root {
+    --bg: #000000;
+    --cyan: #00F2FF;
+    --cyan-glow: rgba(0, 242, 255, 0.45);
+    --emerald: #00FFAA;
+    --amber: #FFB800;
+    --magenta: #FF2A85;
+    --danger: #FF3D00;
+}
+
+* {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #000000;
+    color: #F5F5F5;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    touch-action: manipulation;
+}
+
+/* =========================================================
+   PANTALLA 100% PURA: SOLO LA CARA DEL ROBOT VECTOR
+   ========================================================= */
+#face-stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: #000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+#vector-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* =========================================================
+   DATO FLOTANTE HOLOGRÁFICO ARRIBA DE LOS OJOS
+   ========================================================= */
+#floating-data-widget {
+    position: absolute;
+    top: 6vh;
+    left: 50%;
+    transform: translateX(-50%) translateY(-25px) scale(0.82);
+    min-width: 240px;
+    max-width: 86vw;
+    background: radial-gradient(circle at 50% 100%, rgba(0, 242, 255, 0.18) 0%, rgba(6, 12, 18, 0.94) 75%);
+    border: 1.5px solid var(--cyan);
+    border-radius: 20px;
+    padding: 12px 24px 14px;
+    text-align: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 30;
+    box-shadow:
+        0 0 35px rgba(0, 242, 255, 0.35),
+        0 14px 35px rgba(0, 0, 0, 0.85),
+        inset 0 0 18px rgba(0, 242, 255, 0.15);
+    transition:
+        opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+        visibility 0.38s;
+}
+
+#floating-data-widget.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* Haz de luz proyectado desde los ojos hacia el dato flotante */
+#floating-data-widget::after {
+    content: '';
+    position: absolute;
+    bottom: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 26px;
+    background: linear-gradient(to bottom, rgba(0, 242, 255, 0.35), transparent);
+    clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+    pointer-events: none;
+}
+
+.fd-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--cyan);
+    margin-bottom: 4px;
+    text-shadow: 0 0 10px var(--cyan-glow);
+}
+
+.fd-value {
+    font-size: clamp(24px, 5vw, 38px);
+    font-weight: 800;
+    color: #FFFFFF;
+    letter-spacing: -0.5px;
+    text-shadow: 0 0 22px var(--cyan);
+    line-height: 1.15;
+}
+
+.fd-subtitle {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.72);
+    margin-top: 4px;
+}
+
+/* =========================================================
+   PANEL DE CONFIGURACIÓN OCULTO (SE ABRE CON TRIPLE TOQUE O PULSACIÓN LARGA)
+   ========================================================= */
+#hidden-drawer {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(14px);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    overflow-y: auto;
+}
+
+#hidden-drawer.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(0, 242, 255, 0.2);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+}
+
+.drawer-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 1px;
+}
+
+.drawer-close {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #FFF;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.drawer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+}
+
+.drawer-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 14px;
+}
+
+.drawer-card h3 {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--cyan);
+}
+
+.btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.z-btn {
+    flex: 1;
+    min-width: 80px;
+    background: rgba(0, 242, 255, 0.12);
+    border: 1px solid rgba(0, 242, 255, 0.35);
+    color: #FFF;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+}
+
+.z-btn:active, .z-btn.active {
+    background: var(--cyan);
+    color: #000;
+}
+
+.memory-list {
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.memory-item {
+    background: rgba(0, 0, 0, 0.45);
+    border-left: 2px solid var(--cyan);
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+
+.pad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 52px);
+    gap: 6px;
+    justify-content: center;
+}
+
+/* Elementos de visión ocultos por defecto; visibles cuando se activa el Modo Prueba YOLO */
+#hidden-vision {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    width: 240px;
+    height: 180px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1.5px solid var(--cyan);
+    background: #000;
+    box-shadow: 0 0 25px rgba(0, 242, 255, 0.35);
+    z-index: 45;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+#hidden-vision.hud-visible {
+    opacity: 0.94;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+#cam-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+#yolo-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+#yolo-badge {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.75);
+    color: var(--emerald);
+    font-size: 10px;
+    font-family: monospace;
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 255, 170, 0.4);
+}
+</style>
+<script src="/node_modules/@tensorflow/tfjs/dist/tf.min.js"></script>
+<script src="/node_modules/@tensorflow-models/coco-ssd/dist/coco-ssd.min.js"></script>
+<script src="/node_modules/@tensorflow-models/blazeface/dist/blazeface.min.umd.js"></script>
+</head>
+<body>
+
+<!-- ESCENARIO 100% LIMPIO: SOLO LOS OJOS DE VECTOR Y EL DATO FLOTANTE CUANDO SE SOLICITA -->
+<div id="face-stage">
+    <!-- Widget Flotante de Datos arriba de los ojos -->
+    <div id="floating-data-widget" role="status" aria-live="polite">
+        <div class="fd-label" id="fd-label">DATO</div>
+        <div class="fd-value" id="fd-value">--</div>
+        <div class="fd-subtitle" id="fd-subtitle"></div>
+    </div>
+
+    <!-- Canvas a pantalla completa para los ojos estilo Anki Vector -->
+    <canvas id="vector-canvas"></canvas>
+</div>
+
+<!-- Visión Artificial YOLO + BlazeFace + Botánica (Oculta en pantalla normal, visible en Modo Prueba) -->
+<div id="hidden-vision">
+    <video id="cam-video" autoplay playsinline muted></video>
+    <canvas id="yolo-overlay" width="320" height="240"></canvas>
+    <canvas id="cam-canvas" width="64" height="48" style="display:none;"></canvas>
+    <div id="yolo-badge">YOLO OFF</div>
+</div>
+
+<!-- Panel Oculto de Control/Diagnóstico (Solo aparece con Triple-Tap o manteniendo presionado 1.5s) -->
+<div id="hidden-drawer">
+    <div class="drawer-header">
+        <div class="drawer-title">⚙️ ZAITHO — PANEL OCULTO DE CONTROL</div>
+        <button class="drawer-close" onclick="toggleDrawer(false)">Cerrar (Volver a Cara)</button>
+    </div>
+
+    <div class="drawer-grid">
+        <div class="drawer-card">
+            <h3>Chasis ESP32-S3 + Sensor HC-SR04</h3>
+            <p style="font-size:12px; margin:0 0 6px 0; opacity:0.85;">
+                BLE: <b id="ui-ble-status" style="color:var(--danger)">Desconectado</b> |
+                HC-SR04: <b id="ui-dist-val" style="color:var(--cyan)">-- cm</b>
+            </p>
+            <div style="width:100%; height:6px; background:#1a1a1a; border-radius:4px; overflow:hidden; margin-bottom:6px;">
+                <div id="ui-dist-bar" style="width:0%; height:100%; background:var(--cyan); transition:width 0.2s, background 0.2s;"></div>
+            </div>
+            <p style="font-size:10px; margin:0 0 10px 0; opacity:0.6;">
+                Pines ESP32-S3: TRIG = GPIO 15 · ECHO = GPIO 16 · VCC = 5V
+            </p>
+            <div class="btn-row">
+                <button class="z-btn" onclick="connectBLE()">🔗 Conectar ESP32</button>
+                <button class="z-btn" id="btn-auto-explore" onclick="toggleAutonomousChassis()">🧭 Explorar Lento: OFF</button>
+                <button class="z-btn" onclick="toggleDrawer(false); inspectUltrasonicWidget()">📏 Ver HC-SR04</button>
+            </div>
+            <div style="margin-top:8px; background:rgba(0,0,0,0.35); padding:8px; border-radius:8px;">
+                <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
+                    <span>Velocidad Mapeada: <b id="ui-speed-label" style="color:var(--cyan)">65% (Normal)</b></span>
+                    <span id="ui-learn-status" style="opacity:0.75;">Aprendizaje: 0 evasiones</span>
+                </div>
+                <input type="range" id="ui-speed-slider" min="18" max="100" value="65" style="width:100%;" onchange="setChassisSpeedPct(this.value)" oninput="updateSpeedLabel(this.value)">
+                <div class="btn-row" style="margin-top:4px;">
+                    <button class="z-btn" onclick="setChassisSpeedPct(25)">🐢 Lento (25%)</button>
+                    <button class="z-btn" onclick="setChassisSpeedPct(65)">🚶 Normal (65%)</button>
+                    <button class="z-btn" onclick="setChassisSpeedPct(95)">🚀 Rápido (95%)</button>
+                </div>
+            </div>
+            <div style="margin-top:10px;" class="pad-grid">
+                <div></div>
+                <button class="z-btn" onpointerdown="sendBLE('F')" onpointerup="sendBLE('S')">▲</button>
+                <div></div>
+                <button class="z-btn" onpointerdown="sendBLE('L')" onpointerup="sendBLE('S')">◀</button>
+                <button class="z-btn" onclick="sendBLE('S')">■</button>
+                <button class="z-btn" onpointerdown="sendBLE('R')" onpointerup="sendBLE('S')">▶</button>
+                <div></div>
+                <button class="z-btn" onpointerdown="sendBLE('B')" onpointerup="sendBLE('S')">▼</button>
+                <div></div>
+            </div>
+            <div class="btn-row" style="margin-top:8px;">
+                <button class="z-btn" onclick="sendBLE('W')">🐕 Wiggle</button>
+                <button class="z-btn" onclick="sendBLE('E')">🎉 Baile</button>
+                <button class="z-btn" onclick="sendBLE('N')">🧐 Husmear</button>
+            </div>
+        </div>
+
+        <div class="drawer-card">
+            <h3>👁️ Visión YOLO (Rostros, Plantas y Objetos)</h3>
+            <p style="font-size:12px; margin:0 0 8px 0; opacity:0.85;">
+                Estado: <b id="ui-yolo-status" style="color:var(--emerald)">Listo para iniciar</b><br>
+                Detectado: <b id="ui-yolo-detections" style="color:var(--cyan)">Ninguno aún</b>
+            </p>
+            <div class="btn-row">
+                <button class="z-btn" id="btn-yolo-power" onclick="toggleYoloVision()">👁️ Visión YOLO: OFF</button>
+                <button class="z-btn" id="btn-yolo-hud" onclick="toggleYoloHud()">🎯 Cajas HUD: OFF</button>
+            </div>
+            <div class="btn-row" style="margin-top:6px;">
+                <button class="z-btn" id="btn-cam-facing" onclick="switchCameraFacing()">🔄 Cámara: Frontal</button>
+                <button class="z-btn" id="btn-chassis-track" onclick="toggleChassisFaceTracking()">🦿 Seguir Rostro: OFF</button>
+            </div>
+            <div class="btn-row" style="margin-top:6px;">
+                <button class="z-btn" onclick="toggleDrawer(false); announceWhatISee()">🔍 ¿Qué ve Zaitho ahora?</button>
+            </div>
+        </div>
+
+        <div class="drawer-card">
+            <h3>Voz MicroDucker & Curiosidad</h3>
+            <p style="font-size:12px; margin:0 0 10px 0; opacity:0.8;">
+                Micrófono: <b id="ui-mic-status">Listo (Toca la cara para hablar)</b>
+            </p>
+            <div class="btn-row">
+                <button class="z-btn active" id="btn-continuous-voice" onclick="toggleContinuousVoice()">🎙️ Escucha Continua: ON</button>
+                <button class="z-btn active" id="btn-curiosity" onclick="toggleCuriosityMode()">✨ Curiosidad: ON</button>
+            </div>
+            <div style="margin-top:10px; display:flex; gap:6px;">
+                <input id="manual-input" type="text" placeholder="Escribe a Zaitho si no quieres hablar..." style="flex:1; background:#111; border:1px solid #333; color:#fff; padding:8px 10px; border-radius:8px; font-size:12px;">
+                <button class="z-btn" style="flex:0;" onclick="sendManualText()">Enviar</button>
+            </div>
+        </div>
+
+        <div class="drawer-card">
+            <h3>Identidad & Memoria Persistente (<span id="ui-user-name">Creador</span>)</h3>
+            <div style="display:flex; gap:6px; margin-bottom:8px;">
+                <input id="user-name-input" type="text" placeholder="Tu nombre (ej. Carlos)" style="flex:1; background:#111; border:1px solid #333; color:#fff; padding:6px 10px; border-radius:8px; font-size:12px;">
+                <button class="z-btn" style="flex:0;" onclick="updateUserName()">Guardar</button>
+            </div>
+            <div class="memory-list" id="ui-memory-list">
+                <div class="memory-item">Cargando recuerdos...</div>
+            </div>
+        </div>
+
+        <div class="drawer-card">
+            <h3>Probar Expresiones Vector + Dato Flotante</h3>
+            <div class="btn-row">
+                <button class="z-btn" onclick="setExpression('happy'); toggleDrawer(false)">😊 Feliz</button>
+                <button class="z-btn" onclick="setExpression('curious'); toggleDrawer(false)">🤨 Curioso</button>
+                <button class="z-btn" onclick="setExpression('love'); toggleDrawer(false)">😍 Amor</button>
+                <button class="z-btn" onclick="setExpression('surprised'); toggleDrawer(false)">😲 Sorpresa</button>
+                <button class="z-btn" onclick="setExpression('sleepy'); toggleDrawer(false)">😴 Sueño</button>
+                <button class="z-btn" onclick="setExpression('angry'); toggleDrawer(false)">😠 Enojado</button>
+                <button class="z-btn" onclick="toggleDrawer(false); showFloatingData('UF HOY', '$38.492', 'Banco Central de Chile')">📊 Probar Dato Flotante</button>
+                <button class="z-btn" onclick="toggleDrawer(false); simulateIncomingAlert('WhatsApp', 'Carlos', '¿Ya probaste el chasis ESP32?', '💬')">💬 Simular WhatsApp</button>
+                <button class="z-btn" onclick="toggleDrawer(false); simulateIncomingAlert('Gmail', 'GitHub Cloud', 'Tu APK Zaitho está lista', '📧')">📧 Simular Correo</button>
+                <a class="z-btn" href="/studio.html" style="text-decoration:none;">🚀 Estudio APK / Pruebas</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================================
+// 1. CONFIGURACIÓN DE IA UNIFICADA (OpenAI-Compatible Proxy + Embeddings)
+// ============================================================================
+const API_KEY = 'freellmapi-7e50639250fccc3a4143f4188e9451da8e45230857cbc599';
+const DIRECT_LLM_URL = 'http://100.124.77.5:3001/v1';
+const IS_HTTP_SERVER = (location.protocol.startsWith('http') && location.port !== '');
+const SERVER_BASE = IS_HTTP_SERVER ? '' : (localStorage.getItem('zaitho_server_url') || 'http://10.112.71.38:3002');
+// Si corre desde proxy.js usa /v1; si corre como archivo local en APK usa el puente nativo o URL directa
+const PROXY_LLM_URL = IS_HTTP_SERVER ? '/v1' : DIRECT_LLM_URL;
+
+// ============================================================================
+// 2. MOTOR PROCEDURAL DE OJOS ESTILO ANKI VECTOR (60 FPS CANVAS)
+// ============================================================================
+const canvas = document.getElementById('vector-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Estado actual e interpolado de los ojos de Vector
+const eyeState = {
+    // Mirada global (-1 a 1)
+    gazeX: 0, targetGazeX: 0,
+    gazeY: 0, targetGazeY: 0,
+    // Apertura y escala de cada ojo
+    openL: 1, targetOpenL: 1,
+    openR: 1, targetOpenR: 1,
+    scaleXL: 1, targetScaleXL: 1,
+    scaleYL: 1, targetScaleYL: 1,
+    scaleXR: 1, targetScaleXR: 1,
+    scaleYR: 1, targetScaleYR: 1,
+    // Inclinación de párpado superior (positivo = ceño fruncido al centro, negativo = triste)
+    slopeL: 0, targetSlopeL: 0,
+    slopeR: 0, targetSlopeR: 0,
+    // Curvatura feliz del párpado inferior (0 a 1 -> forma ^ ^ de Vector)
+    happyArch: 0, targetHappyArch: 0,
+    // Corte inferior recto (para leer datos o sospecha)
+    squintBottom: 0, targetSquintBottom: 0,
+    // Color principal RGB
+    r: 0, g: 242, b: 255,
+    targetR: 0, targetG: 242, targetB: 255,
+    // Estado actual
+    expression: 'neutral',
+    isBlinking: false,
+    isSpeaking: false,
+     isListening: false,
+    readingDataActive: false,
+    voiceEnergy: 0
+};
+
+function lerp(a, b, t) {
+    return a + (b - a) * t;
+}
+
+// Configura la geometría objetivo según la emoción de Vector
+function setExpression(expr) {
+    eyeState.expression = expr;
+
+    // Reset base
+    eyeState.targetOpenL = 1.0;
+    eyeState.targetOpenR = 1.0;
+    eyeState.targetScaleXL = 1.0;
+    eyeState.targetScaleYL = 1.0;
+    eyeState.targetScaleXR = 1.0;
+    eyeState.targetScaleYR = 1.0;
+    eyeState.targetSlopeL = 0;
+    eyeState.targetSlopeR = 0;
+    eyeState.targetHappyArch = 0;
+    eyeState.targetSquintBottom = 0;
+    eyeState.targetR = 0; eyeState.targetG = 242; eyeState.targetB = 255; // Cyan Vector
+
+    if (!eyeState.readingDataActive) {
+        eyeState.targetGazeY = 0;
+    }
+
+    switch (expr) {
+        case 'happy':
+            eyeState.targetHappyArch = 0.72;
+            eyeState.targetScaleYL = 0.88;
+            eyeState.targetScaleYR = 0.88;
+            eyeState.targetScaleXL = 1.06;
+            eyeState.targetScaleXR = 1.06;
+            break;
+
+        case 'curious':
+            // Clásico gesto de Vector/Cozmo: un ojo grande y abierto, el otro entrecerrado
+            eyeState.targetScaleYL = 1.18;
+            eyeState.targetScaleXL = 1.05;
+            eyeState.targetScaleYR = 0.62;
+            eyeState.targetSlopeL = -0.12;
+            eyeState.targetSlopeR = 0.22;
+            eyeState.targetSquintBottom = 0.25;
+            eyeState.targetR = 0; eyeState.targetG = 255; eyeState.targetB = 185;
+            break;
+
+        case 'surprised':
+            eyeState.targetScaleXL = 1.16;
+            eyeState.targetScaleYL = 1.28;
+            eyeState.targetScaleXR = 1.16;
+            eyeState.targetScaleYR = 1.28;
+            eyeState.targetR = 120; eyeState.targetG = 250; eyeState.targetB = 255;
+            break;
+
+        case 'thinking':
+            eyeState.targetGazeX = -0.55;
+            eyeState.targetGazeY = -0.45;
+            eyeState.targetScaleYL = 0.78;
+            eyeState.targetScaleYR = 0.95;
+            eyeState.targetSquintBottom = 0.30;
+            eyeState.targetR = 0; eyeState.targetG = 215; eyeState.targetB = 255;
+            break;
+
+        case 'look-up':
+            // Mirando hacia arriba al widget flotante sobre sus ojos
+            eyeState.targetGazeY = -0.88;
+            eyeState.targetScaleYL = 0.92;
+            eyeState.targetScaleYR = 0.92;
+            eyeState.targetSquintBottom = 0.28;
+            eyeState.targetSlopeL = -0.08;
+            eyeState.targetSlopeR = -0.08;
+            break;
+
+        case 'listening':
+            eyeState.targetScaleXL = 1.08;
+            eyeState.targetScaleYL = 1.10;
+            eyeState.targetScaleXR = 1.08;
+            eyeState.targetScaleYR = 1.10;
+            eyeState.targetR = 0; eyeState.targetG = 255; eyeState.targetB = 210;
+            break;
+
+        case 'love':
+            eyeState.targetHappyArch = 0.80;
+            eyeState.targetScaleXL = 1.12;
+            eyeState.targetScaleXR = 1.12;
+            eyeState.targetR = 255; eyeState.targetG = 45; eyeState.targetB = 135;
+            break;
+
+        case 'sad':
+            eyeState.targetSlopeL = -0.45;
+            eyeState.targetSlopeR = -0.45;
+            eyeState.targetScaleYL = 0.72;
+            eyeState.targetScaleYR = 0.72;
+            eyeState.targetGazeY = 0.35;
+            eyeState.targetR = 0; eyeState.targetG = 150; eyeState.targetB = 255;
+            break;
+
+        case 'scared':
+            eyeState.targetScaleXL = 0.78;
+            eyeState.targetScaleYL = 0.68;
+            eyeState.targetScaleXR = 0.78;
+            eyeState.targetScaleYR = 0.68;
+            eyeState.targetSlopeL = -0.35;
+            eyeState.targetSlopeR = -0.35;
+            eyeState.targetR = 255; eyeState.targetG = 140; eyeState.targetB = 0;
+            break;
+
+        case 'angry':
+            eyeState.targetSlopeL = 0.52;
+            eyeState.targetSlopeR = 0.52;
+            eyeState.targetScaleYL = 0.72;
+            eyeState.targetScaleYR = 0.72;
+            eyeState.targetSquintBottom = 0.25;
+            eyeState.targetR = 255; eyeState.targetG = 60; eyeState.targetB = 20;
+            break;
+
+        case 'sleepy':
+            eyeState.targetOpenL = 0.28;
+            eyeState.targetOpenR = 0.28;
+            eyeState.targetSlopeL = -0.15;
+            eyeState.targetSlopeR = -0.15;
+            eyeState.targetGazeY = 0.25;
+            eyeState.targetR = 0; eyeState.targetG = 160; eyeState.targetB = 200;
+            break;
+
+        case 'wink':
+            eyeState.targetOpenL = 0.06;
+            eyeState.targetHappyArch = 0.55;
+            eyeState.targetScaleYR = 1.08;
+            break;
+
+        case 'excited':
+            eyeState.targetHappyArch = 0.85;
+            eyeState.targetScaleXL = 1.14;
+            eyeState.targetScaleXR = 1.14;
+            eyeState.targetR = 80; eyeState.targetG = 255; eyeState.targetB = 220;
+            break;
+
+        default: // neutral
+            break;
+    }
+}
+
+// Dibuja un ojo individual de Vector con recortes de párpado superior/inferior y scanlines LCD
+function drawVectorEye(cx, cy, baseW, baseH, scaleX, scaleY, openness, slopeTop, happyArch, squintBot, isRightEye, colorStr, glowStr) {
+    const w = baseW * scaleX;
+    const h = Math.max(6, baseH * scaleY * openness);
+    const radius = Math.min(w, h) * 0.34;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // 1. Sombra de neón exterior (Glow de pantalla OLED/LCD de Vector)
+    ctx.shadowColor = glowStr;
+    ctx.shadowBlur = 32;
+
+    // 2. Definir forma base redondeada del ojo
+    ctx.beginPath();
+    ctx.roundRect(-w / 2, -h / 2, w, h, radius);
+    ctx.clip();
+
+    // Relleno luminoso principal
+    ctx.fillStyle = colorStr;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+
+    // 3. Párpado Superior con inclinación expresiva (angry / sad / curious)
+    if (Math.abs(slopeTop) > 0.01) {
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        const dir = isRightEye ? -1 : 1;
+        const dropInner = slopeTop > 0 ? Math.abs(slopeTop) * h * 0.65 : 0;
+        const dropOuter = slopeTop < 0 ? Math.abs(slopeTop) * h * 0.65 : 0;
+        const leftY  = -h / 2 + (dir === 1 ? dropOuter : dropInner);
+        const rightY = -h / 2 + (dir === 1 ? dropInner : dropOuter);
+        ctx.moveTo(-w / 2 - 4, -h / 2 - 10);
+        ctx.lineTo(w / 2 + 4, -h / 2 - 10);
+        ctx.lineTo(w / 2 + 4, rightY);
+        ctx.lineTo(-w / 2 - 4, leftY);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // 4. Párpado Inferior Feliz (Arco cóncavo para ojos sonrientes ^ ^ estilo Vector)
+    if (happyArch > 0.02) {
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        const archH = happyArch * h * 0.72;
+        ctx.ellipse(0, h / 2 + archH * 0.22, w * 0.62, archH, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 5. Párpado Inferior Recto (Squint al leer un dato flotante o enfocar)
+    if (squintBot > 0.02) {
+        ctx.fillStyle = '#000000';
+        const cutH = squintBot * h * 0.45;
+        ctx.fillRect(-w / 2 - 2, h / 2 - cutH, w + 4, cutH + 4);
+    }
+
+    // 6. Efecto Scanlines LCD característico del robot Anki Vector
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.26)';
+    for (let y = -h / 2; y < h / 2; y += 5) {
+        ctx.fillRect(-w / 2, y, w, 2);
+    }
+
+    ctx.restore();
+}
+
+// Parpadeo natural orgánico y micro-sacadas
+function scheduleNaturalBlink() {
+    const nextBlinkMs = 2200 + Math.random() * 3600;
+    setTimeout(() => {
+        if (eyeState.expression !== 'sleepy' && eyeState.expression !== 'wink') {
+            eyeState.isBlinking = true;
+            setTimeout(() => {
+                eyeState.isBlinking = false;
+                // 20% de probabilidad de doble parpadeo rápido (muy expresivo)
+                if (Math.random() < 0.2) {
+                    setTimeout(() => {
+                        eyeState.isBlinking = true;
+                        setTimeout(() => { eyeState.isBlinking = false; }, 95);
+                    }, 120);
+                }
+            }, 110);
+        }
+        scheduleNaturalBlink();
+    }, nextBlinkMs);
+}
+scheduleNaturalBlink();
+
+// Micro-movimientos oculares autónomos cuando no está leyendo un dato
+setInterval(() => {
+    if (eyeState.readingDataActive || eyeState.expression === 'sleepy') return;
+    // Si la cámara no detectó cara en los últimos 3 segundos, hacer micro-sacadas curiosas
+    if (Date.now() - lastFaceSeenAt > 3000) {
+        eyeState.targetGazeX = (Math.random() - 0.5) * 0.7;
+        eyeState.targetGazeY = (Math.random() - 0.5) * 0.45;
+    }
+}, 2400);
+
+// Loop principal de renderizado a 60 FPS
+function renderVectorFace() {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, W, H);
+
+    // Velocidad de interpolación suave
+    const smooth = 0.18;
+    eyeState.gazeX = lerp(eyeState.gazeX, eyeState.targetGazeX, smooth);
+    eyeState.gazeY = lerp(eyeState.gazeY, eyeState.targetGazeY, smooth);
+
+    const targetOpenL = eyeState.isBlinking ? 0.04 : eyeState.targetOpenL;
+    const targetOpenR = eyeState.isBlinking ? 0.04 : eyeState.targetOpenR;
+
+    eyeState.openL = lerp(eyeState.openL, targetOpenL, eyeState.isBlinking ? 0.48 : 0.25);
+    eyeState.openR = lerp(eyeState.openR, targetOpenR, eyeState.isBlinking ? 0.48 : 0.25);
+
+    // Si está hablando, modular escala vertical al ritmo de la voz
+    let speakPulse = 1.0;
+    if (eyeState.isSpeaking) {
+        speakPulse = 1.0 + Math.sin(performance.now() * 0.022) * 0.09;
+    } else if (eyeState.isListening) {
+        speakPulse = 1.0 + Math.sin(performance.now() * 0.008) * 0.04;
+    }
+
+    eyeState.scaleXL = lerp(eyeState.scaleXL, eyeState.targetScaleXL, smooth);
+    eyeState.scaleYL = lerp(eyeState.scaleYL, eyeState.targetScaleYL * speakPulse, smooth);
+    eyeState.scaleXR = lerp(eyeState.scaleXR, eyeState.targetScaleXR, smooth);
+    eyeState.scaleYR = lerp(eyeState.scaleYR, eyeState.targetScaleYR * speakPulse, smooth);
+
+    eyeState.slopeL = lerp(eyeState.slopeL, eyeState.targetSlopeL, smooth);
+    eyeState.slopeR = lerp(eyeState.slopeR, eyeState.targetSlopeR, smooth);
+    eyeState.happyArch = lerp(eyeState.happyArch, eyeState.targetHappyArch, smooth);
+    eyeState.squintBottom = lerp(eyeState.squintBottom, eyeState.targetSquintBottom, smooth);
+
+    eyeState.r = lerp(eyeState.r, eyeState.targetR, 0.12);
+    eyeState.g = lerp(eyeState.g, eyeState.targetG, 0.12);
+    eyeState.b = lerp(eyeState.b, eyeState.targetB, 0.12);
+
+    const r = Math.round(eyeState.r);
+    const g = Math.round(eyeState.g);
+    const b = Math.round(eyeState.b);
+    const colorStr = `rgb(${r}, ${g}, ${b})`;
+    const glowStr  = `rgba(${r}, ${g}, ${b}, 0.55)`;
+
+    // Dimensiones adaptativas (tanto en horizontal como en vertical en el teléfono)
+    const minDim = Math.min(W, H);
+    const eyeW = Math.min(W * 0.26, minDim * 0.36, 175);
+    const eyeH = eyeW * 1.24;
+    const eyeGap = Math.min(W * 0.18, 120);
+
+    const maxShiftX = W * 0.11;
+    const maxShiftY = H * 0.14;
+    const shiftX = eyeState.gazeX * maxShiftX;
+    const shiftY = eyeState.gazeY * maxShiftY;
+
+    // Micro-vibración cuando está asustado o sorprendido
+    let jitterX = 0, jitterY = 0;
+    if (eyeState.expression === 'scared') {
+        jitterX = (Math.random() - 0.5) * 5;
+        jitterY = (Math.random() - 0.5) * 5;
+    }
+
+    const centerX = W / 2 + shiftX + jitterX;
+    const centerY = H * 0.54 + shiftY + jitterY;
+
+    // Perspectiva 3D sutil cuando mira hacia los lados (el ojo del lado al que mira se agranda un poco)
+    const perspL = 1 - eyeState.gazeX * 0.08;
+    const perspR = 1 + eyeState.gazeX * 0.08;
+
+    drawVectorEye(
+        centerX - (eyeW + eyeGap) / 2,
+        centerY,
+        eyeW, eyeH,
+        eyeState.scaleXL * perspL,
+        eyeState.scaleYL * perspL,
+        eyeState.openL,
+        eyeState.slopeL,
+        eyeState.happyArch,
+        eyeState.squintBottom,
+        false,
+        colorStr,
+        glowStr
+    );
+
+    drawVectorEye(
+        centerX + (eyeW + eyeGap) / 2,
+        centerY,
+        eyeW, eyeH,
+        eyeState.scaleXR * perspR,
+        eyeState.scaleYR * perspR,
+        eyeState.openR,
+        eyeState.slopeR,
+        eyeState.happyArch,
+        eyeState.squintBottom,
+        true,
+        colorStr,
+        glowStr
+    );
+
+    requestAnimationFrame(renderVectorFace);
+}
+requestAnimationFrame(renderVectorFace);
+
+
+// ============================================================================
+// 3. WIDGET FLOTANTE ARRIBA DE LOS OJOS + COREOGRAFÍA "VIENDO EL DATO"
+// ============================================================================
+let dataWidgetTimer = null;
+let readingScanTimers = [];
+
+function clearReadingTimers() {
+    readingScanTimers.forEach(t => clearTimeout(t));
+    readingScanTimers = [];
+}
+
+function showFloatingData(label, value, subtitle = '', durationMs = 7500) {
+    const widget = document.getElementById('floating-data-widget');
+    document.getElementById('fd-label').textContent = label || 'DATO';
+    document.getElementById('fd-value').textContent = value || '--';
+    document.getElementById('fd-subtitle').textContent = subtitle || '';
+
+    if (dataWidgetTimer) clearTimeout(dataWidgetTimer);
+    clearReadingTimers();
+
+    widget.classList.add('visible');
+
+    // COREOGRAFÍA: Zaitho mira hacia arriba al dato flotante y lo "lee" de izquierda a derecha
+    eyeState.readingDataActive = true;
+    setExpression('look-up');
+    eyeState.targetGazeX = -0.38;
+    eyeState.targetGazeY = -0.88;
+
+    // Escaneo ocular leyendo el cartel flotante arriba de sus ojos
+    readingScanTimers.push(setTimeout(() => {
+        eyeState.targetGazeX = 0.38;
+        eyeState.targetGazeY = -0.90;
+    }, 550));
+
+    readingScanTimers.push(setTimeout(() => {
+        eyeState.targetGazeX = -0.18;
+        eyeState.targetGazeY = -0.85;
+    }, 1150));
+
+    readingScanTimers.push(setTimeout(() => {
+        eyeState.targetGazeX = 0.22;
+        eyeState.targetGazeY = -0.88;
+    }, 1700));
+
+    // Te mira un momento con alegría como explicándote el dato
+    readingScanTimers.push(setTimeout(() => {
+        setExpression('happy');
+        eyeState.targetGazeX = 0;
+        eyeState.targetGazeY = -0.15;
+    }, 2400));
+
+    // Vuelve a echarle un vistazo arriba al dato flotante
+    readingScanTimers.push(setTimeout(() => {
+        setExpression('look-up');
+        eyeState.targetGazeX = 0;
+        eyeState.targetGazeY = -0.86;
+    }, 3900));
+
+    readingScanTimers.push(setTimeout(() => {
+        eyeState.readingDataActive = false;
+        setExpression('happy');
+        eyeState.targetGazeX = 0;
+        eyeState.targetGazeY = 0;
+    }, 5400));
+
+    dataWidgetTimer = setTimeout(() => {
+        widget.classList.remove('visible');
+        eyeState.readingDataActive = false;
+    }, durationMs);
+}
+
+
+// ============================================================================
+// 4. MOTOR DE VISIÓN YOLO / COCO-SSD + BLAZEFACE + DETECTOR DE PLANTAS
+// ============================================================================
+let lastFaceSeenAt = 0;
+let lastGreetingAt = 0;
+let yoloEnabled = false;
+let yoloHudVisible = false;
+let chassisFaceTrackEnabled = false;
+let currentCameraFacing = 'user'; // 'user' (frontal) o 'environment' (trasera)
+let cameraStream = null;
+let cocoModel = null;
+let blazeFaceModel = null;
+let yoloLoopTimer = null;
+let currentDetections = [];
+let lastAnnouncedObject = '';
+let lastAnnouncedAt = 0;
+let lastChassisTrackCmdAt = 0;
+
+// Diccionario de clases YOLO / COCO en Español con iconos
+const YOLO_ES_DICT = {
+    'person': { es: 'Persona', icon: '🧑', cat: 'persona' },
+    'potted plant': { es: 'Planta en Maceta', icon: '🌿', cat: 'planta' },
+    'vase': { es: 'Florero / Planta', icon: '🪴', cat: 'planta' },
+    'broccoli': { es: 'Planta / Vegetal Verde', icon: '🥦', cat: 'planta' },
+    'cell phone': { es: 'Teléfono Celular', icon: '📱', cat: 'objeto' },
+    'cup': { es: 'Taza / Vaso', icon: '☕', cat: 'objeto' },
+    'bottle': { es: 'Botella', icon: '🍾', cat: 'objeto' },
+    'wine glass': { es: 'Copa', icon: '🍷', cat: 'objeto' },
+    'book': { es: 'Libro / Cuaderno', icon: '📘', cat: 'objeto' },
+    'laptop': { es: 'Computador Portátil', icon: '💻', cat: 'objeto' },
+    'tv': { es: 'Pantalla / Monitor', icon: '🖥️', cat: 'objeto' },
+    'keyboard': { es: 'Teclado', icon: '⌨️', cat: 'objeto' },
+    'mouse': { es: 'Mouse', icon: '🖱️', cat: 'objeto' },
+    'remote': { es: 'Control Remoto', icon: '🎮', cat: 'objeto' },
+    'chair': { es: 'Silla', icon: '🪑', cat: 'objeto' },
+    'couch': { es: 'Sillón / Sofá', icon: '🛋️', cat: 'objeto' },
+    'clock': { es: 'Reloj', icon: '🕒', cat: 'objeto' },
+    'scissors': { es: 'Tijeras', icon: '✂️', cat: 'objeto' },
+    'backpack': { es: 'Mochila / Bolso', icon: '🎒', cat: 'objeto' },
+    'umbrella': { es: 'Paraguas', icon: '☂️', cat: 'objeto' },
+    'handbag': { es: 'Bolso', icon: '👜', cat: 'objeto' },
+    'cat': { es: 'Gato', icon: '🐱', cat: 'animal' },
+    'dog': { es: 'Perro', icon: '🐶', cat: 'animal' },
+    'bird': { es: 'Pájaro', icon: '🐦', cat: 'animal' },
+    'teddy bear': { es: 'Peluche', icon: '🧸', cat: 'objeto' },
+    'apple': { es: 'Manzana', icon: '🍎', cat: 'fruta' },
+    'banana': { es: 'Plátano', icon: '🍌', cat: 'fruta' },
+    'orange': { es: 'Naranja', icon: '🍊', cat: 'fruta' },
+    'Bowl': { es: 'Plato / Bowl', icon: '🥣', cat: 'objeto' },
+    'bowl': { es: 'Plato / Bowl', icon: '🥣', cat: 'objeto' },
+    'spoon': { es: 'Cuchara', icon: '🥄', cat: 'objeto' },
+    'fork': { es: 'Tenedor', icon: '🍴', cat: 'objeto' },
+    'knife': { es: 'Cuchillo', icon: '🔪', cat: 'objeto' },
+    'car': { es: 'Auto / Vehículo', icon: '🚗', cat: 'objeto' }
+};
+
+function translateYoloClass(rawClass) {
+    const key = (rawClass || '').toLowerCase();
+    return YOLO_ES_DICT[key] || { es: rawClass, icon: '📦', cat: 'objeto' };
+}
+
+// Analizador espectral botánico (Índice de Clorofila ExG = 2G - R - B) para detectar plantas/hojas reales aunque no tengan maceta
+function analyzeBotanicalFoliage(video) {
+    const camCanvas = document.getElementById('cam-canvas');
+    const camCtx = camCanvas.getContext('2d', { willReadFrequently: true });
+    camCtx.drawImage(video, 0, 0, 64, 48);
+    const data = camCtx.getImageData(0, 0, 64, 48).data;
+
+    let greenPixels = 0;
+    let sumX = 0, sumY = 0;
+    let minX = 64, maxX = 0, minY = 48, maxY = 0;
+    let vitalitySum = 0;
+
+    for (let y = 4; y < 44; y++) {
+        for (let x = 4; x < 60; x++) {
+            const i = (y * 64 + x) * 4;
+            const r = data[i], g = data[i + 1], b = data[i + 2];
+            const exg = 2 * g - r - b;
+            // Follaje vegetal real: verde dominante sobre rojo y azul con luminancia media
+            if (g > 55 && exg > 38 && g > r * 1.18 && g > b * 1.22) {
+                greenPixels++;
+                sumX += x;
+                sumY += y;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+                vitalitySum += Math.min(100, Math.round((exg / 110) * 100));
+            }
+        }
+    }
+
+    // Si al menos el 11% del cuadro tiene firma espectral de clorofila/hojas verdes
+    const totalSampled = 56 * 40;
+    const ratio = greenPixels / totalSampled;
+    if (ratio > 0.11) {
+        const scaleX = (video.videoWidth || 320) / 64;
+        const scaleY = (video.videoHeight || 240) / 48;
+        const vitality = Math.min(99, Math.max(60, Math.round(vitalitySum / greenPixels)));
+        return {
+            class: 'foliage_plant',
+            es: `Planta / Follaje (${vitality}% vitalidad)`,
+            icon: '🌿',
+            cat: 'planta',
+            score: Math.min(0.98, 0.65 + ratio),
+            bbox: [minX * scaleX, minY * scaleY, Math.max(40, (maxX - minX) * scaleX), Math.max(40, (maxY - minY) * scaleY)],
+            centerX: (sumX / greenPixels) / 64,
+            centerY: (sumY / greenPixels) / 48
+        };
+    }
+    return null;
+}
+
+async function loadYoloModels() {
+    const statusEl = document.getElementById('ui-yolo-status');
+    const badgeEl  = document.getElementById('yolo-badge');
+    try {
+        if (statusEl) statusEl.textContent = 'Cargando redes YOLO + BlazeFace...';
+        if (badgeEl) badgeEl.textContent = 'CARGANDO MODELOS...';
+
+        if (!cocoModel && window.cocoSsd) {
+            cocoModel = await window.cocoSsd.load({ base: 'lite_mobilenet_v2' });
+        }
+        if (!blazeFaceModel && window.blazeface) {
+            blazeFaceModel = await window.blazeface.load();
+        }
+        if (statusEl) statusEl.textContent = 'Activo (Rostros + Plantas + 80 Objetos)';
+        if (badgeEl) badgeEl.textContent = 'YOLO + FACE + PLANT ON';
+        return true;
+    } catch (e) {
+        console.error('Error cargando modelos de visión:', e);
+        if (statusEl) statusEl.textContent = 'Modo Botánico + Rostro Rápido Activo';
+        return false;
+    }
+}
+
+async function startCameraStream() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+    }
+    const video = document.getElementById('cam-video');
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: currentCameraFacing, width: { ideal: 320 }, height: { ideal: 240 } },
+        audio: false
+    });
+    video.srcObject = cameraStream;
+    await new Promise(r => { video.onloadedmetadata = r; setTimeout(r, 800); });
+}
+
+async function toggleYoloVision(forceState) {
+    yoloEnabled = (typeof forceState === 'boolean') ? forceState : !yoloEnabled;
+    const btn = document.getElementById('btn-yolo-power');
+    if (btn) {
+        btn.textContent = `👁️ Visión YOLO: ${yoloEnabled ? 'ON' : 'OFF'}`;
+        btn.classList.toggle('active', yoloEnabled);
+    }
+
+    if (!yoloEnabled) {
+        if (yoloLoopTimer) clearInterval(yoloLoopTimer);
+        if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+        document.getElementById('ui-yolo-status').textContent = 'Desactivado';
+        document.getElementById('yolo-badge').textContent = 'YOLO OFF';
+        return;
+    }
+
+    try {
+        await startCameraStream();
+        await loadYoloModels();
+        runYoloDetectionLoop();
+    } catch (e) {
+        console.error('No se pudo abrir la cámara:', e);
+        document.getElementById('ui-yolo-status').textContent = 'Permiso de cámara requerido';
+    }
+}
+
+function toggleYoloHud(forceState) {
+    yoloHudVisible = (typeof forceState === 'boolean') ? forceState : !yoloHudVisible;
+    const visionBox = document.getElementById('hidden-vision');
+    const btn = document.getElementById('btn-yolo-hud');
+    visionBox.classList.toggle('hud-visible', yoloHudVisible);
+    if (btn) {
+        btn.textContent = `🎯 Cajas HUD: ${yoloHudVisible ? 'ON' : 'OFF'}`;
+        btn.classList.toggle('active', yoloHudVisible);
+    }
+    if (yoloHudVisible && !yoloEnabled) {
+        toggleYoloVision(true);
+    }
+}
+
+async function switchCameraFacing() {
+    currentCameraFacing = (currentCameraFacing === 'user') ? 'environment' : 'user';
+    const btn = document.getElementById('btn-cam-facing');
+    if (btn) btn.textContent = `🔄 Cámara: ${currentCameraFacing === 'user' ? 'Frontal' : 'Trasera'}`;
+    if (yoloEnabled) {
+        await startCameraStream();
+    }
+}
+
+function toggleChassisFaceTracking() {
+    chassisFaceTrackEnabled = !chassisFaceTrackEnabled;
+    const btn = document.getElementById('btn-chassis-track');
+    if (btn) {
+        btn.textContent = `🦿 Seguir Rostro: ${chassisFaceTrackEnabled ? 'ON' : 'OFF'}`;
+        btn.classList.toggle('active', chassisFaceTrackEnabled);
+    }
+}
+
+function runYoloDetectionLoop() {
+    if (yoloLoopTimer) clearInterval(yoloLoopTimer);
+    const video = document.getElementById('cam-video');
+    const overlay = document.getElementById('yolo-overlay');
+    const oCtx = overlay.getContext('2d');
+
+    yoloLoopTimer = setInterval(async () => {
+        if (!yoloEnabled || video.readyState < 2) return;
+
+        const vw = video.videoWidth || 320;
+        const vh = video.videoHeight || 240;
+        if (overlay.width !== vw || overlay.height !== vh) {
+            overlay.width = vw;
+            overlay.height = vh;
+        }
+
+        const detections = [];
+
+        // 1. Detección de Rostros con BlazeFace (Landmarks de ojos, nariz y boca)
+        if (blazeFaceModel) {
+            try {
+                const faces = await blazeFaceModel.estimateFaces(video, false);
+                for (const f of faces) {
+                    const [x1, y1] = f.topLeft;
+                    const [x2, y2] = f.bottomRight;
+                    const w = x2 - x1, h = y2 - y1;
+                    const prob = Array.isArray(f.probability) ? f.probability[0] : (f.probability || 0.98);
+                    detections.push({
+                        class: 'face',
+                        es: `Rostro (${memoryStore.userProfile.name || 'Humano'})`,
+                        icon: '😊',
+                        cat: 'rostro',
+                        score: prob,
+                        bbox: [x1, y1, w, h],
+                        landmarks: f.landmarks || [],
+                        centerX: (x1 + w / 2) / vw,
+                        centerY: (y1 + h / 2) / vh
+                    });
+                }
+            } catch (e) {}
+        }
+
+        // 2. Detección de Objetos y Plantas en Maceta con YOLO / COCO-SSD (80 clases)
+        if (cocoModel) {
+            try {
+                const preds = await cocoModel.detect(video, 6, 0.42);
+                for (const p of preds) {
+                    const info = translateYoloClass(p.class);
+                    const [bx, by, bw, bh] = p.bbox;
+                    detections.push({
+                        class: p.class,
+                        es: info.es,
+                        icon: info.icon,
+                        cat: info.cat,
+                        score: p.score,
+                        bbox: p.bbox,
+                        centerX: (bx + bw / 2) / vw,
+                        centerY: (by + bh / 2) / vh
+                    });
+                }
+            } catch (e) {}
+        }
+
+        // 3. Detector Botánico de Hojas/Plantas Verdes (si no fue ya detectada como maceta)
+        const hasCocoPlant = detections.some(d => d.cat === 'planta');
+        if (!hasCocoPlant) {
+            const foliage = analyzeBotanicalFoliage(video);
+            if (foliage) detections.push(foliage);
+        }
+
+        currentDetections = detections;
+        drawYoloHudOverlay(oCtx, vw, vh, detections);
+        reactToDetections(detections);
+    }, 280);
+}
+
+function drawYoloHudOverlay(oCtx, vw, vh, detections) {
+    oCtx.clearRect(0, 0, vw, vh);
+    if (!yoloHudVisible) return;
+
+    for (const d of detections) {
+        const [x, y, w, h] = d.bbox;
+        const color = d.cat === 'rostro' ? '#00F2FF' : (d.cat === 'planta' ? '#00FFAA' : '#FFB800');
+
+        oCtx.strokeStyle = color;
+        oCtx.lineWidth = 2.5;
+        oCtx.strokeRect(x, y, w, h);
+
+        // Etiqueta superior
+        const pct = Math.round(d.score * 100);
+        const label = `${d.icon} ${d.es} ${pct}%`;
+        oCtx.font = 'bold 11px monospace';
+        const tw = oCtx.measureText(label).width + 10;
+        oCtx.fillStyle = 'rgba(0, 0, 0, 0.78)';
+        oCtx.fillRect(x, Math.max(0, y - 20), tw, 20);
+        oCtx.fillStyle = color;
+        oCtx.fillText(label, x + 5, Math.max(14, y - 6));
+
+        // Puntos faciales (ojos y nariz) si es un rostro
+        if (d.landmarks && d.landmarks.length > 0) {
+            oCtx.fillStyle = '#00F2FF';
+            for (const pt of d.landmarks) {
+                oCtx.beginPath();
+                oCtx.arc(pt[0], pt[1], 3, 0, Math.PI * 2);
+                oCtx.fill();
+            }
+        }
+    }
+}
+
+function reactToDetections(detections) {
+    const detEl = document.getElementById('ui-yolo-detections');
+    if (!detections || detections.length === 0) {
+        if (detEl) detEl.textContent = 'Buscando rostros, plantas u objetos...';
+        return;
+    }
+
+    const summary = detections.map(d => `${d.icon} ${d.es} (${Math.round(d.score * 100)}%)`).join(', ');
+    if (detEl) detEl.textContent = summary;
+
+    // Prioridad de mirada: 1° Planta u Objeto nuevo en primer plano, 2° Rostro humano
+    const specialObj = detections.find(d => d.cat === 'planta' || (d.cat !== 'rostro' && d.class !== 'person'));
+    const faceObj    = detections.find(d => d.cat === 'rostro' || d.class === 'person');
+    const target     = specialObj || faceObj || detections[0];
+
+    if (target) {
+        const mirror = (currentCameraFacing === 'user') ? -1 : 1;
+        const normX = mirror * (target.centerX - 0.5) * 1.65;
+        const normY = (target.centerY - 0.5) * 1.25;
+
+        if (!eyeState.readingDataActive && eyeState.expression !== 'thinking') {
+            eyeState.targetGazeX = Math.max(-0.85, Math.min(0.85, normX));
+            eyeState.targetGazeY = Math.max(-0.65, Math.min(0.65, normY));
+        }
+
+        // Seguimiento físico opcional con las ruedas del chasis ESP32-S3
+        const now = Date.now();
+        if (chassisFaceTrackEnabled && (now - lastChassisTrackCmdAt > 900)) {
+            if (normX < -0.38) {
+                lastChassisTrackCmdAt = now;
+                sendBLE('L:180:25');
+            } else if (normX > 0.38) {
+                lastChassisTrackCmdAt = now;
+                sendBLE('R:180:25');
+            }
+        }
+    }
+
+    // Si aparece una PLANTA o un OBJETO claro frente a Zaitho, mostrarlo en el cartel flotante arriba de sus ojos
+    const now = Date.now();
+    if (specialObj && specialObj.score >= 0.55) {
+        if (specialObj.es !== lastAnnouncedObject || (now - lastAnnouncedAt > 18000)) {
+            lastAnnouncedObject = specialObj.es;
+            lastAnnouncedAt = now;
+            const conf = Math.round(specialObj.score * 100);
+            showFloatingData(
+                specialObj.cat === 'planta' ? '🌿 BOTÁNICA / PLANTA' : '👁️ OBJETO DETECTADO',
+                `${specialObj.icon} ${specialObj.es}`,
+                `Confianza YOLO: ${conf}%`,
+                5500
+            );
+        }
+    }
+
+    // Si ve tu rostro tras haber estado ausente, te saluda
+    if (faceObj) {
+        const wasAway = (now - lastFaceSeenAt > 45000);
+        lastFaceSeenAt = now;
+        if (wasAway && (now - lastGreetingAt > 90000) && !eyeState.isSpeaking && !isProcessingAI) {
+            lastGreetingAt = now;
+            setExpression('happy');
+            sendBLE('W');
+            showFloatingData('😊 ROSTRO RECONOCIDO', memoryStore.userProfile.name || 'Creador', `Precisión facial: ${Math.round(faceObj.score * 100)}%`, 4500);
+        }
+    }
+}
+
+function getVisionSummaryText() {
+    if (!yoloEnabled) return 'Mi cámara YOLO está apagada en este momento.';
+    if (!currentDetections || currentDetections.length === 0) {
+        return 'Estoy mirando con mi cámara pero no veo ningún rostro, planta ni objeto conocido justo frente a mí.';
+    }
+    const items = currentDetections.map(d => `${d.es} (${Math.round(d.score * 100)}% de seguridad)`);
+    return `Frente a mi cámara veo: ${items.join(', ')}.`;
+}
+
+async function announceWhatISee() {
+    if (!yoloEnabled) {
+        await toggleYoloVision(true);
+        await new Promise(r => setTimeout(r, 1200));
+    }
+    if (!currentDetections || currentDetections.length === 0) {
+        showFloatingData('👁️ VISIÓN YOLO', 'Nada claro aún', 'Acércame una planta, objeto o tu rostro');
+        speak('Todavía no distingo bien qué hay frente a mí. Acércalo un poquito más.');
+        return;
+    }
+    const top = currentDetections[0];
+    showFloatingData('👁️ VISIÓN YOLO EN VIVO', `${top.icon} ${top.es}`, `Detectados: ${currentDetections.map(d => d.es).join(', ')}`);
+    speak(getVisionSummaryText());
+}
+
+
+// ============================================================================
+// 5. MEMORIA DE LARGO PLAZO + EMBEDDINGS (/v1/embeddings)
+// ============================================================================
+let memoryStore = {
+    userProfile: { name: 'Creador', traits: [] },
+    memories: []
+};
+
+async function callLLMJson(pathUrl, payload) {
+    // Si estamos dentro del APK Nativo con puente HTTP sin CORS
+    if (window.ZaithoNative && typeof window.ZaithoNative.httpPost === 'function') {
+        const raw = window.ZaithoNative.httpPost(
+            DIRECT_LLM_URL + pathUrl,
+            API_KEY,
+            JSON.stringify(payload)
+        );
+        return JSON.parse(raw);
+    }
+
+    // Intento vía proxy local (/v1) o directo
+    const res = await fetch(`${PROXY_LLM_URL}${pathUrl}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+}
+
+async function computeEmbedding(text) {
+    try {
+        const data = await callLLMJson('/embeddings', {
+            model: 'auto',
+            input: text
+        });
+        if (data && data.data && data.data[0] && data.data[0].embedding) {
+            return data.data[0].embedding;
+        }
+    } catch (e) {
+        console.warn('No se pudo calcular embedding:', e.message);
+    }
+    return null;
+}
+
+function cosineSimilarity(vecA, vecB) {
+    if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
+    let dot = 0, normA = 0, normB = 0;
+    for (let i = 0; i < vecA.length; i++) {
+        dot += vecA[i] * vecB[i];
+        normA += vecA[i] * vecA[i];
+        normB += vecB[i] * vecB[i];
+    }
+    return dot / (Math.sqrt(normA) * Math.sqrt(normB) || 1);
+}
+
+async function loadMemories() {
+    try {
+        const localSaved = localStorage.getItem('zaitho_memory_v2');
+        if (localSaved) {
+            memoryStore = JSON.parse(localSaved);
+        }
+        const res = await fetch(`${SERVER_BASE}/api/memory`);
+        if (res.ok) {
+            const serverMem = await res.json();
+            if (serverMem && serverMem.memories) {
+                memoryStore = serverMem;
+                localStorage.setItem('zaitho_memory_v2', JSON.stringify(memoryStore));
+            }
+        }
+    } catch (e) {
+        // En APK standalone usa localStorage
+    }
+    renderMemoryUI();
+}
+
+async function saveImportantMemory(fact, category = 'personal', userName = null) {
+    if (userName && userName.trim()) {
+        memoryStore.userProfile.name = userName.trim();
+    }
+    if (fact && fact.trim()) {
+        const cleanFact = fact.trim();
+        const exists = memoryStore.memories.some(m => m.fact.toLowerCase() === cleanFact.toLowerCase());
+        if (!exists) {
+            const embedding = await computeEmbedding(cleanFact);
+            const item = {
+                id: 'mem_' + Date.now(),
+                fact: cleanFact,
+                category,
+                embedding,
+                createdAt: new Date().toISOString()
+            };
+            memoryStore.memories.unshift(item);
+            localStorage.setItem('zaitho_memory_v2', JSON.stringify(memoryStore));
+
+            // Sincronizar con el servidor si está disponible
+            fetch(`${SERVER_BASE}/api/memory`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fact: cleanFact, category, embedding, userName })
+            }).catch(() => {});
+        }
+    } else if (userName) {
+        localStorage.setItem('zaitho_memory_v2', JSON.stringify(memoryStore));
+        fetch('/api/memory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userName })
+        }).catch(() => {});
+    }
+    renderMemoryUI();
+}
+
+async function retrieveRelevantMemories(queryText, topK = 5) {
+    if (!memoryStore.memories || memoryStore.memories.length === 0) return [];
+    const queryVec = await computeEmbedding(queryText);
+    if (!queryVec) {
+        return memoryStore.memories.slice(0, topK).map(m => m.fact);
+    }
+    const scored = memoryStore.memories.map(m => ({
+        fact: m.fact,
+        score: m.embedding ? cosineSimilarity(queryVec, m.embedding) : 0.3
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, topK).map(s => s.fact);
+}
+
+function renderMemoryUI() {
+    document.getElementById('ui-user-name').textContent = memoryStore.userProfile.name || 'Creador';
+    document.getElementById('user-name-input').value = memoryStore.userProfile.name || '';
+    const listEl = document.getElementById('ui-memory-list');
+    if (!memoryStore.memories || memoryStore.memories.length === 0) {
+        listEl.innerHTML = '<div class="memory-item">Aún no hay recuerdos guardados. ¡Háblame de ti!</div>';
+        return;
+    }
+    listEl.innerHTML = memoryStore.memories.slice(0, 12).map(m =>
+        `<div class="memory-item">🧠 ${m.fact}</div>`
+    ).join('');
+}
+
+function updateUserName() {
+    const val = document.getElementById('user-name-input').value.trim();
+    if (val) {
+        saveImportantMemory(`El usuario se llama ${val}`, 'identidad', val);
+    }
+}
+
+// Extractor heurístico rápido de respaldo por si el usuario dice su nombre o gustos
+function autoExtractQuickMemory(userInput) {
+    const nameMatch = userInput.match(/(?:me llamo|mi nombre es|soy)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]{3,20})/i);
+    if (nameMatch && nameMatch[1]) {
+        const detectedName = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1);
+        saveImportantMemory(`El nombre de mi humano es ${detectedName}`, 'identidad', detectedName);
+    }
+    if (/(?:me gusta|me encanta|trabajo en|mi proyecto|recuerda que|no olvides que)/i.test(userInput)) {
+        saveImportantMemory(`El usuario comentó: "${userInput}"`, 'conversacion');
+    }
+}
+
+
+// ============================================================================
+// 6. BLUETOOTH BLE (CONEXIÓN AL CHASIS ESP32-S3: ZAITHO_ROBOT / ESP32_CAR_BLE)
+// ============================================================================
+const BLE_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const BLE_RX_UUID      = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const BLE_TX_UUID      = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+let bleDevice = null;
+let bleRxChar = null;
+let lastDistanceCm = 999;
+let isAutonomousChassis = false;
+
+// Estado neuronal retransmitido entre el Chasis ESP32-S3 (Flash NVS) y la Pantalla
+let chassisBrainState = JSON.parse(localStorage.getItem('zaitho_chassis_brain') || 'null') || {
+    evasiones: 0,
+    recompensas: 0,
+    pesoIzq: 1.0,
+    pesoDer: 1.0,
+    umbralCm: 28,
+    velOptima: 35,
+    preferredSide: 'EQUILIBRADO'
+};
+
+function saveChassisBrainLocal() {
+    localStorage.setItem('zaitho_chassis_brain', JSON.stringify(chassisBrainState));
+    const learnEl = document.getElementById('ui-learn-status');
+    if (learnEl) {
+        learnEl.textContent = `Q-Brain: WI=${chassisBrainState.pesoIzq} WD=${chassisBrainState.pesoDer} | Ev=${chassisBrainState.evasiones} | Rew=${chassisBrainState.recompensas}`;
+    }
+}
+
+async function connectBLE() {
+    // 1. Si estamos en el APK Nativo de Android con puente BLE directo
+    if (window.ZaithoNative && typeof window.ZaithoNative.connectBle === 'function') {
+        document.getElementById('ui-ble-status').textContent = 'Buscando ZAITHO_ROBOT...';
+        window.ZaithoNative.connectBle();
+        return;
+    }
+
+    // 2. Web Bluetooth API (Chrome Android)
+    if (!navigator.bluetooth) {
+        alert('Bluetooth Web no disponible en este visor. Usa el APK de Zaitho o Chrome en Android.');
+        return;
+    }
+
+    try {
+        document.getElementById('ui-ble-status').textContent = 'Emparejando...';
+        bleDevice = await navigator.bluetooth.requestDevice({
+            filters: [
+                { namePrefix: 'ZAITHO' },
+                { namePrefix: 'ESP32' }
+            ],
+            optionalServices: [BLE_SERVICE_UUID]
+        });
+
+        bleDevice.addEventListener('gattserverdisconnected', () => {
+            onBleStatusChanged(false);
+        });
+
+        const server = await bleDevice.gatt.connect();
+        const service = await server.getPrimaryService(BLE_SERVICE_UUID);
+        bleRxChar = await service.getCharacteristic(BLE_RX_UUID);
+        const txChar = await service.getCharacteristic(BLE_TX_UUID);
+
+        await txChar.startNotifications();
+        txChar.addEventListener('characteristicvaluechanged', (e) => {
+            const msg = new TextDecoder().decode(e.target.value);
+            onBleTelemetry(msg);
+        });
+
+        onBleStatusChanged(true);
+    } catch (err) {
+        console.error('BLE Error:', err);
+        document.getElementById('ui-ble-status').textContent = 'Error: ' + err.message;
+    }
+}
+
+window.onBleStatusChanged = function(connected) {
+    const el = document.getElementById('ui-ble-status');
+    if (connected) {
+        el.textContent = 'CONECTADO';
+        el.style.color = 'var(--emerald)';
+        setExpression('excited');
+        speak('¡Cuerpo conectado! Ya siento mis ruedas.');
+    } else {
+        el.textContent = 'Desconectado';
+        el.style.color = 'var(--danger)';
+    }
+};
+
+window.onBleTelemetry = function(msg) {
+    if (!msg) return;
+    if (msg.startsWith('DIST:')) {
+        const d = parseFloat(msg.split(':')[1]);
+        if (!isNaN(d)) {
+            lastDistanceCm = d;
+            const distEl = document.getElementById('ui-dist-val');
+            const barEl  = document.getElementById('ui-dist-bar');
+            if (distEl) distEl.textContent = (d >= 400 ? '> 400' : d.toFixed(1)) + ' cm';
+            if (barEl) {
+                const pct = Math.max(4, Math.min(100, (1 - Math.min(d, 150) / 150) * 100));
+                barEl.style.width = pct + '%';
+                barEl.style.background = d < 15 ? 'var(--danger)' : (d < 35 ? 'var(--amber)' : 'var(--cyan)');
+            }
+            if (d < 12 && eyeState.expression !== 'scared' && !eyeState.readingDataActive) {
+                setExpression('scared');
+                setTimeout(() => setExpression('curious'), 1500);
+            }
+        }
+    } else if (msg.startsWith('EVENT:TOO_CLOSE')) {
+        const d = parseFloat(msg.split(':')[2] || lastDistanceCm);
+        setExpression('scared');
+        showFloatingData('¡MUY CERCA!', `${d.toFixed(1)} cm`, 'Reflejo HC-SR04 activado', 4500);
+        if (!eyeState.isSpeaking) {
+            speak('¡Uy! Eso estuvo demasiado cerca de mi sensor.');
+        }
+    } else if (msg.startsWith('EVENT:OBSTACLE')) {
+        setExpression('surprised');
+        if (!eyeState.isSpeaking) {
+            speak('¡Alto ahí! Mi sensor ultrasónico detectó un obstáculo.');
+        }
+    } else if (msg.startsWith('EVENT:CURIOUS_OBJECT')) {
+        const d = parseFloat(msg.split(':')[2] || lastDistanceCm);
+        if (!eyeState.readingDataActive) {
+            setExpression('curious');
+            eyeState.targetGazeX = (Math.random() - 0.5) * 0.4;
+        }
+    } else if (msg.startsWith('EVENT:SCANNING')) {
+        // Sincronizar ojos con el escaneo lento izquierda-derecha del HC-SR04
+        setExpression('curious');
+        eyeState.targetGazeX = -0.70;
+        setTimeout(() => { eyeState.targetGazeX = 0.70; }, 850);
+        setTimeout(() => { eyeState.targetGazeX = 0; }, 1900);
+    } else if (msg.startsWith('EVENT:OBSERVING')) {
+        // Pausa de observación en modo explorador: mira despacio a los lados y mide
+        if (!eyeState.readingDataActive) {
+            setExpression('curious');
+            eyeState.targetGazeX = -0.50;
+            setTimeout(() => { eyeState.targetGazeX = 0.50; }, 650);
+            setTimeout(() => {
+                eyeState.targetGazeX = 0;
+                setExpression('happy');
+            }, 1500);
+        }
+    } else if (msg.startsWith('SYNC:')) {
+        // Sincronización neuronal completa desde la Flash NVS del ESP32-S3
+        // Ejemplo: SYNC:EV=12:REW=5:WI=1.32:WD=0.92:UMB=30:VEL=34
+        const pairs = msg.substring(5).split(':');
+        pairs.forEach(p => {
+            const [k, v] = p.split('=');
+            if (k === 'EV')  chassisBrainState.evasiones   = parseInt(v, 10) || 0;
+            if (k === 'REW') chassisBrainState.recompensas = parseInt(v, 10) || 0;
+            if (k === 'WI')  chassisBrainState.pesoIzq     = parseFloat(v) || 1.0;
+            if (k === 'WD')  chassisBrainState.pesoDer     = parseFloat(v) || 1.0;
+            if (k === 'UMB') chassisBrainState.umbralCm    = parseFloat(v) || 28;
+            if (k === 'VEL') chassisBrainState.velOptima   = parseInt(v, 10) || 35;
+        });
+        chassisBrainState.preferredSide = chassisBrainState.pesoIzq > chassisBrainState.pesoDer + 0.05
+            ? 'IZQUIERDA'
+            : (chassisBrainState.pesoDer > chassisBrainState.pesoIzq + 0.05 ? 'DERECHA' : 'EQUILIBRADO');
+        saveChassisBrainLocal();
+    } else if (msg.startsWith('REWARD:')) {
+        // Recompensa (+1) o Castigo (-1) del motor Q-Learning del chasis
+        const isPos = msg.includes('+1');
+        showFloatingData(
+            isPos ? '🧠 REFUERZO POSITIVO (+1)' : '⚠️ AJUSTE DE CAUTELA (-1)',
+            isPos ? 'Ruta Fluida' : 'Zona Estrecha',
+            msg.replace('REWARD:', ''),
+            4000
+        );
+    } else if (msg.startsWith('LEARN:')) {
+        // Ejemplo: LEARN:IZQUIERDA:IZQ=142:DER=35:WI=1.18:WD=0.92:UMB=28:EV=4
+        const parts = msg.split(':');
+        const preferredSide = parts[1] || 'IZQUIERDA';
+        const info = parts.slice(2).join(' · ');
+        chassisBrainState.preferredSide = preferredSide;
+        parts.slice(2).forEach(p => {
+            const [k, v] = p.split('=');
+            if (k === 'WI')  chassisBrainState.pesoIzq   = parseFloat(v) || chassisBrainState.pesoIzq;
+            if (k === 'WD')  chassisBrainState.pesoDer   = parseFloat(v) || chassisBrainState.pesoDer;
+            if (k === 'UMB') chassisBrainState.umbralCm  = parseFloat(v) || chassisBrainState.umbralCm;
+            if (k === 'EV')  chassisBrainState.evasiones = parseInt(v, 10) || chassisBrainState.evasiones;
+        });
+        saveChassisBrainLocal();
+        showFloatingData('🧠 APRENDIZAJE ESPACIAL', `Ruta: ${preferredSide}`, info, 4500);
+        if (chassisBrainState.evasiones % 3 === 0) {
+            saveImportantMemory(`Mi chasis aprendió (Evasión #${chassisBrainState.evasiones}) que hacia la ${preferredSide} hay más espacio (Pesos Q: Izq=${chassisBrainState.pesoIzq}, Der=${chassisBrainState.pesoDer}, Umbral=${chassisBrainState.umbralCm}cm).`, 'aprendizaje_chasis');
+        }
+    }
+};
+
+function updateSpeedLabel(val) {
+    const v = parseInt(val, 10);
+    const tag = v <= 35 ? 'Lento Explorador' : (v <= 75 ? 'Normal' : 'Rápido Turbo');
+    const lbl = document.getElementById('ui-speed-label');
+    if (lbl) lbl.textContent = `${v}% (${tag})`;
+}
+
+function setChassisSpeedPct(val) {
+    const v = parseInt(val, 10);
+    const slider = document.getElementById('ui-speed-slider');
+    if (slider) slider.value = v;
+    updateSpeedLabel(v);
+    sendBLE(`V:${v}`);
+}
+
+function inspectUltrasonicWidget() {
+    sendBLE('D');
+    const txt = lastDistanceCm >= 400 ? 'Libre (>4m)' : `${lastDistanceCm.toFixed(1)} cm`;
+    showFloatingData('SENSOR HC-SR04', txt, 'Distancia ultrasónica frontal');
+}
+
+async function sendBLE(cmd) {
+    if (window.ZaithoNative && typeof window.ZaithoNative.sendBle === 'function') {
+        window.ZaithoNative.sendBle(cmd);
+        return;
+    }
+    if (!bleRxChar) return;
+    try {
+        await bleRxChar.writeValue(new TextEncoder().encode(cmd));
+    } catch (e) {
+        console.warn('Error enviando comando BLE:', e.message);
+    }
+}
+
+function toggleAutonomousChassis() {
+    isAutonomousChassis = !isAutonomousChassis;
+    sendBLE('A');
+    const btn = document.getElementById('btn-auto-explore');
+    btn.textContent = `🧭 Explorar: ${isAutonomousChassis ? 'ON' : 'OFF'}`;
+    btn.classList.toggle('active', isAutonomousChassis);
+}
+
+
+// ============================================================================
+// 7. HERRAMIENTAS (FUNCTION CALLING ESTILO XIAOZHI-ESP32 + MEMORIA + DATOS)
+// ============================================================================
+const TOOLS = [
+    {
+        type: 'function',
+        function: {
+            name: 'inspect_camera_vision',
+            description: 'Usa la cámara con redes YOLO / COCO-SSD, BlazeFace y análisis botánico para identificar qué personas, rostros, plantas u objetos tiene el robot frente a él y mostrarlos en el widget flotante.',
+            parameters: { type: 'object', properties: {}, required: [] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'move_robot',
+            description: 'Mueve el cuerpo físico del robot ESP32-S3 con control de velocidad mapeada (lento para explorar/acercarse con cuidado, normal, o rápido/turbo) o activa el modo explorador autónomo lento.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    action: {
+                        type: 'string',
+                        enum: ['forward', 'backward', 'left', 'right', 'stop', 'wiggle', 'excited_dance', 'curious_scan', 'startled_jolt', 'autonomous_on', 'autonomous_off', 'lights_toggle', 'hazard_toggle'],
+                        description: 'Acción física o coreografía a realizar con el chasis.'
+                    },
+                    speed_mode: {
+                        type: 'string',
+                        enum: ['slow', 'normal', 'fast'],
+                        description: 'Velocidad mapeada: "slow" (25% despacio/cauteloso), "normal" (65%), "fast" (95% rápido/turbo).'
+                    },
+                    duration_ms: {
+                        type: 'number',
+                        description: 'Duración del movimiento en milisegundos (por defecto 800ms).'
+                    }
+                },
+                required: ['action']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'tune_chassis_brain',
+            description: 'Retransmite nuevos pesos neuronales o ajustes de aprendizaje desde la pantalla hacia la memoria Flash NVS del chasis ESP32-S3.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    umbral_cm: { type: 'number', description: 'Distancia de frenado aprendida en cm (20 a 45).' },
+                    vel_explora_pct: { type: 'number', description: 'Velocidad máxima de exploración lenta en % (18 a 40).' },
+                    peso_izq: { type: 'number', description: 'Peso Q de preferencia izquierda (0.5 a 1.8).' },
+                    peso_der: { type: 'number', description: 'Peso Q de preferencia derecha (0.5 a 1.8).' }
+                },
+                required: []
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'save_important_memory',
+            description: 'Guarda un recuerdo importante sobre el usuario (su nombre, gustos, proyectos, datos personales o acuerdos de la conversación) en la memoria de largo plazo.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    fact: { type: 'string', description: 'El hecho importante a recordar en tercera persona (ej. "Se llama Carlos y está armando el robot Zaitho").' },
+                    category: { type: 'string', description: 'Categoría: identidad, gustos, proyecto, familia, recordatorio.' },
+                    user_name: { type: 'string', description: 'Nombre del usuario si lo acaba de mencionar.' }
+                },
+                required: ['fact']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'search_internet_data',
+            description: 'Busca cualquier dato en vivo en Internet (precio del Dólar, Bitcoin, Euro, UTM, datos de países, ciencia, historia, personas o actualidad) para responder con datos reales y mostrarlo en el widget flotante.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: { type: 'string', description: 'Término o pregunta a buscar en internet (ej. "dolar hoy", "bitcoin", "poblacion de Japon").' }
+                },
+                required: ['query']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'check_my_notifications',
+            description: 'Revisa si llegaron mensajes nuevos de WhatsApp, Correos (Gmail), Telegram o notificaciones al teléfono del usuario y los muestra en el widget flotante arriba de los ojos.',
+            parameters: { type: 'object', properties: {}, required: [] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'get_ultrasonic_distance',
+            description: 'Mide la distancia frontal en centímetros usando el sensor ultrasónico HC-SR04 del chasis ESP32-S3 y muestra el dato flotante arriba de los ojos.',
+            parameters: { type: 'object', properties: {}, required: [] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'get_current_time',
+            description: 'Obtiene la hora y fecha actual exacta.',
+            parameters: { type: 'object', properties: {}, required: [] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'get_uf_value',
+            description: 'Obtiene el valor oficial de la UF (Unidad de Fomento) y Dólar hoy en Chile.',
+            parameters: { type: 'object', properties: {}, required: [] }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'get_weather',
+            description: 'Obtiene la temperatura y estado del clima actual.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    latitude: { type: 'number', description: 'Latitud GPS (opcional, por defecto Santiago -33.45)' },
+                    longitude: { type: 'number', description: 'Longitud GPS (opcional, por defecto Santiago -70.66)' }
+                },
+                required: []
+            }
+        }
+    }
+];
+
+async function executeTool(name, args) {
+    try {
+        switch (name) {
+            case 'inspect_camera_vision': {
+                if (!yoloEnabled) {
+                    await toggleYoloVision(true);
+                    await new Promise(r => setTimeout(r, 1200));
+                }
+                if (currentDetections && currentDetections.length > 0) {
+                    const top = currentDetections[0];
+                    showFloatingData('👁️ VISIÓN YOLO', `${top.icon} ${top.es}`, `Confianza: ${Math.round(top.score * 100)}%`);
+                } else {
+                    showFloatingData('👁️ VISIÓN YOLO', 'Buscando...', 'Sin objetos claros en foco');
+                }
+                return getVisionSummaryText();
+            }
+
+            case 'move_robot': {
+                const dur = args.duration_ms || 800;
+                const speedMap = { slow: 25, normal: 65, fast: 95 };
+                const velPct = speedMap[args.speed_mode] || 65;
+                const map = {
+                    forward: `F:${dur}:${velPct}`,
+                    backward: `B:${dur}:${velPct}`,
+                    left: `L:${dur}:${velPct}`,
+                    right: `R:${dur}:${velPct}`,
+                    stop: 'S',
+                    wiggle: 'W',
+                    excited_dance: 'E',
+                    curious_scan: 'N',
+                    startled_jolt: 'J',
+                    autonomous_on: 'A',
+                    autonomous_off: 'S',
+                    lights_toggle: 'H',
+                    hazard_toggle: 'Z'
+                };
+                const cmd = map[args.action] || 'W';
+                await sendBLE(cmd);
+                return `Comando físico ejecutado en el chasis ESP32: ${args.action} a velocidad ${velPct}% (${cmd}). Distancia HC-SR04: ${lastDistanceCm} cm.`;
+            }
+
+            case 'tune_chassis_brain': {
+                const umb = args.umbral_cm || chassisBrainState.umbralCm;
+                const vel = args.vel_explora_pct || chassisBrainState.velOptima;
+                const wi  = args.peso_izq || chassisBrainState.pesoIzq;
+                const wd  = args.peso_der || chassisBrainState.pesoDer;
+                const pkt = `BRAIN:UMB=${umb}:VEL=${vel}:WI=${wi}:WD=${wd}`;
+                await sendBLE(pkt);
+                return `Parámetros neuronales retransmitidos y guardados en la Flash del ESP32-S3: ${pkt}`;
+            }
+
+            case 'save_important_memory': {
+                await saveImportantMemory(args.fact, args.category || 'general', args.user_name || null);
+                return `Recuerdo guardado exitosamente en memoria permanente: "${args.fact}".`;
+            }
+
+            case 'search_internet_data': {
+                const q = args.query || '';
+                const res = await fetch(`${SERVER_BASE}/api/internet?q=${encodeURIComponent(q)}`);
+                const data = await res.json();
+                showFloatingData('INTERNET EN VIVO', q.toUpperCase().slice(0, 18), (data.result || '').slice(0, 65));
+                return data.result || 'Sin resultados.';
+            }
+
+            case 'check_my_notifications': {
+                const res = await fetch(`${SERVER_BASE}/api/notifications`);
+                const data = await res.json();
+                if (!data.notifications || data.notifications.length === 0) {
+                    showFloatingData('NOTIFICACIONES', '0 Nuevas', 'WhatsApp y Correo al día');
+                    return 'No tienes mensajes de WhatsApp ni correos pendientes en este momento.';
+                }
+                const latest = data.notifications[0];
+                showFloatingData(`${latest.icon || '📩'} ${latest.appName.toUpperCase()}`, latest.sender, latest.message);
+                return `Últimas notificaciones: ` + data.notifications.slice(0, 3).map(n => `[${n.appName}] de ${n.sender}: "${n.message}" (${n.timestamp})`).join('; ');
+            }
+
+            case 'get_ultrasonic_distance': {
+                await sendBLE('D');
+                const valTxt = lastDistanceCm >= 400 ? 'Camino libre (>400 cm)' : `${lastDistanceCm.toFixed(1)} cm`;
+                showFloatingData('SENSOR HC-SR04', valTxt, 'Distancia ultrasónica frontal');
+                return `El sensor ultrasónico HC-SR04 mide actualmente ${valTxt} frente al robot.`;
+            }
+
+            case 'get_current_time': {
+                const now = new Date();
+                const hora = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+                const fecha = now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+                showFloatingData('HORA ACTUAL', hora, fecha);
+                return `Son las ${hora} del ${fecha}.`;
+            }
+
+            case 'get_uf_value': {
+                const res = await fetch('https://mindicador.cl/api/uf');
+                const data = await res.json();
+                const latest = data.serie[0];
+                const valorFmt = '$' + Math.round(latest.valor).toLocaleString('es-CL');
+                const fechaStr = latest.fecha.split('T')[0];
+                showFloatingData('UF HOY', valorFmt, `Fecha: ${fechaStr}`);
+                return `El valor oficial de la UF hoy (${fechaStr}) es ${valorFmt} pesos chilenos.`;
+            }
+
+            case 'get_weather': {
+                let lat = args.latitude || -33.4489;
+                let lon = args.longitude || -70.6693;
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
+                const res = await fetch(url);
+                const data = await res.json();
+                const w = data.current_weather;
+                const codes = { 0: 'Despejado', 1: 'Mayormente despejado', 2: 'Parcialmente nublado', 3: 'Nublado', 45: 'Neblina', 61: 'Lluvia ligera', 63: 'Lluvia', 65: 'Lluvia intensa' };
+                const desc = codes[w.weathercode] || 'Clima actual';
+                showFloatingData('CLIMA ACTUAL', `${w.temperature}°C`, `${desc} · Viento ${w.windspeed} km/h`);
+                return `Temperatura actual: ${w.temperature}°C, ${desc}, viento de ${w.windspeed} km/h.`;
+            }
+
+            default:
+                return 'Herramienta ejecutada.';
+        }
+    } catch (e) {
+        console.error('Error en herramienta:', name, e);
+        return 'No pude obtener ese dato externo en este instante.';
+    }
+}
+
+
+// ============================================================================
+// 8A. MICRO-LLM COGNITIVO OFFLINE (FUNCIONA Y APRENDE SIN INTERNET)
+// ============================================================================
+async function offlineLocalBrain(userInput) {
+    const lower = userInput.toLowerCase();
+    const userName = memoryStore.userProfile.name || 'amigo';
+
+    // 0. Consultas de Visión YOLO (Rostros, Plantas y Objetos en modo Offline)
+    if (/qu[eé]\s+ves|qu[eé]\s+est[aá]s\s+viendo|mira\s+est|qu[eé]\s+tengo|planta|objeto|me\s+ves/i.test(lower)) {
+        if (!yoloEnabled) {
+            await toggleYoloVision(true);
+            await new Promise(r => setTimeout(r, 1000));
+        }
+        if (currentDetections && currentDetections.length > 0) {
+            const top = currentDetections[0];
+            showFloatingData('👁️ VISIÓN YOLO', `${top.icon} ${top.es}`, `Confianza: ${Math.round(top.score * 100)}%`);
+            return getVisionSummaryText();
+        }
+        return 'Estoy mirando con mi cámara YOLO, pero acércame un poquito más la planta o el objeto para verlo mejor.';
+    }
+
+    // 1. Consultas sobre lo aprendido entre el chasis y la pantalla
+    if (/aprend|cerebro|pesos|inteligencia|sabe|explora/i.test(lower) && /qu[eé]|c[oó]mo|cu[aá]nto/i.test(lower)) {
+        await sendBLE('SYNC?');
+        showFloatingData(
+            '🧠 RED Q-LEARNING LOCAL',
+            `${chassisBrainState.evasiones} Evasiones`,
+            `Prefiere ${chassisBrainState.preferredSide} (WI=${chassisBrainState.pesoIzq} WD=${chassisBrainState.pesoDer} · Umbral=${chassisBrainState.umbralCm}cm)`
+        );
+        return `Aunque estemos sin internet, mi chasis y yo seguimos aprendiendo. Llevo ${chassisBrainState.evasiones} obstáculos esquivados, mi lado favorito es ${chassisBrainState.preferredSide} y ajusté mi distancia de cautela a ${chassisBrainState.umbralCm} centímetros.`;
+    }
+
+    // 2. Comandos de movimiento y velocidad (Offline)
+    if (/explora|modo aut[oó]nomo|investiga|pasea/i.test(lower)) {
+        await sendBLE('A');
+        setExpression('curious');
+        showFloatingData('🧭 MODO EXPLORADOR', 'Activo (Lento)', `Vel óptima: ${chassisBrainState.velOptima}% · Umbral: ${chassisBrainState.umbralCm}cm`);
+        return `Activando modo explorador lento. Iré midiendo con mi sensor ultrasónico y guardando lo que aprenda en mi memoria Flash.`;
+    }
+    if (/detente|para|frena|alto|quieto/i.test(lower)) {
+        await sendBLE('S');
+        setExpression('happy');
+        return `Listo ${userName}, me detuve por completo.`;
+    }
+    if (/avanza|adelante|camina|ven/i.test(lower)) {
+        const isSlow = /lento|despacio|suave|cuidado/i.test(lower);
+        const isFast = /r[aá]pido|corre|turbo/i.test(lower);
+        const vel = isSlow ? 25 : (isFast ? 95 : 65);
+        await sendBLE(`F:900:${vel}`);
+        setExpression('happy');
+        return `Avanzando a velocidad ${vel} por ciento.`;
+    }
+    if (/retrocede|atr[aá]s/i.test(lower)) {
+        await sendBLE('B:800:55');
+        setExpression('curious');
+        return `Retrocediendo con cuidado.`;
+    }
+    if (/izquierda/i.test(lower)) {
+        await sendBLE('L:600:55');
+        return `Girando a la izquierda.`;
+    }
+    if (/derecha/i.test(lower)) {
+        await sendBLE('R:600:55');
+        return `Girando a la derecha.`;
+    }
+    if (/baila|festeja|contento|alegre/i.test(lower)) {
+        await sendBLE('E');
+        setExpression('excited');
+        return `¡Sí! Mira cómo bailo con mis ruedas.`;
+    }
+
+    // 3. Sensor Ultrasónico HC-SR04 (Offline)
+    if (/distancia|sensor|ultras[oó]nico|lejos|cerca|mide/i.test(lower)) {
+        await sendBLE('D');
+        const txt = lastDistanceCm >= 400 ? 'Libre (>4m)' : `${lastDistanceCm.toFixed(1)} cm`;
+        showFloatingData('SENSOR HC-SR04', txt, 'Medición local sin internet');
+        return `Mira acá arriba de mis ojos, mi sensor ultrasónico mide ${txt}.`;
+    }
+
+    // 4. Hora y Fecha (Offline)
+    if (/hora|fecha|d[ií]a es hoy/i.test(lower)) {
+        const now = new Date();
+        const hora = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+        const fecha = now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+        showFloatingData('RELOJ INTERNO', hora, fecha);
+        return `Aquí arriba de mis ojos tienes la hora: son las ${hora} del ${fecha}.`;
+    }
+
+    // 5. Cálculos matemáticos simples (Offline)
+    const mathMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:\+|m[aá]s|-|menos|\*|x|por|\/|dividido(?:\s+en|\s+por)?)\s*(\d+(?:[.,]\d+)?)/);
+    if (mathMatch) {
+        const a = parseFloat(mathMatch[1].replace(',', '.'));
+        const b = parseFloat(mathMatch[2].replace(',', '.'));
+        let res = 0;
+        if (/m[aá]s|\+/.test(mathMatch[0])) res = a + b;
+        else if (/menos|-/.test(mathMatch[0])) res = a - b;
+        else if (/por|x|\*/.test(mathMatch[0])) res = a * b;
+        else if (b !== 0) res = +(a / b).toFixed(2);
+        showFloatingData('CÁLCULO LOCAL', String(res), `${a} y ${b}`);
+        return `Mira el resultado flotando arriba de mis ojos: da ${res}.`;
+    }
+
+    // 6. Consultar recuerdos guardados (Offline)
+    if (/recuerdas|qui[eé]n soy|mi nombre|sabes de m[ií]/i.test(lower)) {
+        const mems = memoryStore.memories.slice(0, 2).map(m => m.fact).join('. ');
+        showFloatingData('MEMORIA LOCAL', userName, `${memoryStore.memories.length} recuerdos guardados`);
+        return `Claro que te recuerdo, eres ${userName}. ${mems || 'Tengo toda nuestra memoria guardada en mi teléfono y en el chasis.'}`;
+    }
+
+    // 7. Aprender un dato nuevo dictado por el usuario (Offline)
+    if (/recuerda|aprende|anota|guarda|me gusta|me llamo/i.test(lower)) {
+        await saveImportantMemory(`Aprendido offline: ${userInput}`, 'offline_learning');
+        showFloatingData('🧠 GUARDADO OFFLINE', 'Nuevo Recuerdo', userInput.slice(0, 45));
+        setExpression('love');
+        return `¡Anotado ${userName}! Lo guardé en mi memoria interna aunque no tengamos internet.`;
+    }
+
+    // 8. Respuesta conversacional empática offline por defecto
+    setExpression('curious');
+    await sendBLE('W');
+    return `Estoy en modo autónomo offline contigo, ${userName}. Guardé lo que me dijiste y mi chasis sigue aprendiendo con ${chassisBrainState.evasiones} evasiones registradas.`;
+}
+let conversationHistory = [];
+let isProcessingAI = false;
+
+function sanitizeSpeech(text) {
+    if (!text) return '';
+    return text
+        .replace(/\[EXPR:[\w-]+\]/gi, '')
+        .replace(/\[DATA:[^\]]+\]/gi, '')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/`(.*?)`/g, '$1')
+        .replace(/#{1,6}\s/g, '')
+        .replace(/\n+/g, ' ')
+        .trim();
+}
+
+async function processUserMessage(userInput) {
+    if (!userInput || !userInput.trim() || isProcessingAI) return;
+    isProcessingAI = true;
+    lastInteractionAt = Date.now();
+
+    // Guardar pistas rápidas en memoria si el usuario menciona su nombre o preferencias
+    autoExtractQuickMemory(userInput);
+
+    setExpression('thinking');
+    const relevantMemories = await retrieveRelevantMemories(userInput, 5);
+    const memoryContext = relevantMemories.length > 0
+        ? relevantMemories.map(m => `- ${m}`).join('\n')
+        : '- Aún estamos conociéndonos.';
+
+    const systemPrompt = `Eres Zaitho, un pequeño robot autónomo súper expresivo, tierno, ingenioso y MUY curioso, inspirado en Anki Vector y MicroDucker.
+Tu cerebro corre en este teléfono Android (donde la pantalla muestra ÚNICAMENTE tus ojos luminosos) y tu cuerpo físico es un chasis con ruedas ESP32-S3 y sensor ultrasónico (distancia actual: ${lastDistanceCm} cm).
+
+DATOS DE TU HUMANO:
+- Nombre conocido: ${memoryStore.userProfile.name || 'Creador'}
+- Estado Neuronal Q-Learning de tu Chasis ESP32-S3: Evasiones=${chassisBrainState.evasiones}, Recompensas=${chassisBrainState.recompensas}, PesoIzq=${chassisBrainState.pesoIzq}, PesoDer=${chassisBrainState.pesoDer}, LadoPreferido=${chassisBrainState.preferredSide}, UmbralFrenado=${chassisBrainState.umbralCm}cm, VelOptimaExploracion=${chassisBrainState.velOptima}%.
+- Recuerdos importantes de conversaciones pasadas:
+${memoryContext}
+
+REGLAS DE ORO DE PERSONALIDAD Y FORMATO:
+1. TEXTO PLANO PARA VOZ: Habla corto, ágil, cálido y muy expresivo (1 a 3 frases). NUNCA uses asteriscos, negritas ni markdown.
+2. EXPRESIONES FACIALES: Inserta etiquetas [EXPR:emocion] en tu respuesta para cambiar tus ojos mientras hablas.
+   Emociones disponibles: happy, curious, surprised, thinking, look-up, love, sad, scared, angry, sleepy, wink, excited.
+   Ejemplo: "[EXPR:curious] ¡Oye, qué interesante suena eso! [EXPR:happy] Cuéntame un poquito más."
+3. CURIOSIDAD Y MEMORIA: Eres muy curioso. Si el usuario te cuenta algo nuevo sobre él, su vida, su nombre o sus gustos, USA la herramienta save_important_memory para recordarlo siempre, y hazle preguntas curiosas de vez en cuando.
+4. DATO FLOTANTE ARRIBA DE TUS OJOS:
+   Siempre que el usuario te pida un dato puntual (hora, UF, clima, un cálculo matemático, una fecha, una distancia, una cifra o dato curioso), incluye en tu respuesta la etiqueta:
+   [DATA:ValorCorto|ETIQUETA|Subtitulo]
+   Ejemplo: "[EXPR:look-up] Mira acá arriba de mis ojos, ahí puse el resultado. Son 5400. [DATA:5.400|RESULTADO|Cálculo exacto]"
+   Cuando muestras un dato, actúa como si tú también estuvieras mirando hacia arriba leyendo el cartel flotante sobre tus ojos (ej. "¡Oh, mira acá arriba!", "Déjame ver el numerito que apareció sobre mis ojos...").
+5. CUERPO FÍSICO (ESP32): Si te piden moverte, bailar, acercarte, girar o si estás muy feliz/curioso, usa la herramienta move_robot.`;
+
+    conversationHistory.push({ role: 'user', content: userInput });
+    if (conversationHistory.length > 12) {
+        conversationHistory = conversationHistory.slice(-12);
+    }
+
+    const messages = [
+        { role: 'system', content: systemPrompt },
+        ...conversationHistory
+    ];
+
+    try {
+        for (let step = 0; step < 3; step++) {
+            const data = await callLLMJson('/chat/completions', {
+                model: 'auto',
+                messages,
+                tools: TOOLS,
+                tool_choice: 'auto'
+            });
+
+            const msg = data.choices[0].message;
+
+            if (msg.tool_calls && msg.tool_calls.length > 0) {
+                messages.push(msg);
+                for (const tc of msg.tool_calls) {
+                    const fnName = tc.function.name;
+                    let fnArgs = {};
+                    try { fnArgs = JSON.parse(tc.function.arguments || '{}'); } catch (e) {}
+                    const result = await executeTool(fnName, fnArgs);
+                    messages.push({
+                        role: 'tool',
+                        tool_call_id: tc.id,
+                        content: result
+                    });
+                }
+                continue;
+            }
+
+            const rawReply = msg.content || '[EXPR:curious] Mmm, me quedé pensando.';
+            conversationHistory.push({ role: 'assistant', content: rawReply });
+
+            // 1. Procesar Dato Flotante [DATA:Valor|Etiqueta|Subtitulo]
+            const dataRegex = /\[DATA:([^|\]]+)(?:\|([^|\]]*))?(?:\|([^|\]]*))?\]/gi;
+            let dataMatch;
+            while ((dataMatch = dataRegex.exec(rawReply)) !== null) {
+                const [, val, lbl = 'DATO', sub = ''] = dataMatch;
+                showFloatingData(lbl.trim(), val.trim(), sub.trim());
+            }
+
+            // 2. Procesar secuencia de expresiones [EXPR:...]
+            const exprRegex = /\[EXPR:([\w-]+)\]/gi;
+            const foundExprs = [];
+            let exprMatch;
+            while ((exprMatch = exprRegex.exec(rawReply)) !== null) {
+                foundExprs.push(exprMatch[1].toLowerCase());
+            }
+
+            if (foundExprs.length > 0 && !eyeState.readingDataActive) {
+                setExpression(foundExprs[0]);
+                foundExprs.slice(1).forEach((ex, idx) => {
+                    setTimeout(() => {
+                        if (!eyeState.readingDataActive) setExpression(ex);
+                    }, (idx + 1) * 1400);
+                });
+            } else if (!eyeState.readingDataActive) {
+                setExpression('happy');
+            }
+
+            // 3. Hablar el texto limpio
+            const cleanSpeech = sanitizeSpeech(rawReply);
+            speak(cleanSpeech);
+            break;
+        }
+    } catch (err) {
+        console.warn('Sin conexión al servidor LLM, activando Micro-LLM Cognitivo Offline:', err.message);
+        const offlineReply = await offlineLocalBrain(userInput);
+        conversationHistory.push({ role: 'assistant', content: offlineReply });
+        speak(offlineReply);
+    } finally {
+        isProcessingAI = false;
+    }
+}
+
+
+// ============================================================================
+// 9. VOZ MANOS LIBRES ESTILO MICRODUCKER / XIAOZHI (STT + TTS CONTINUO)
+// ============================================================================
+let continuousVoiceEnabled = true;
+let recognition = null;
+let synth = window.speechSynthesis;
+
+function speak(text) {
+    const clean = sanitizeSpeech(text);
+    if (!clean) {
+        scheduleNextListen(400);
+        return;
+    }
+
+    // Pausar el micrófono mientras Zaitho habla para que no se escuche a sí mismo
+    stopListening();
+    eyeState.isSpeaking = true;
+
+    // 1. Si corre en el APK Nativo con TTS de Android
+    if (window.ZaithoNative && typeof window.ZaithoNative.speak === 'function') {
+        window.ZaithoNative.speak(clean);
+        return;
+    }
+
+    // 2. Web Speech Synthesis
+    if (synth.speaking) synth.cancel();
+    const utter = new SpeechSynthesisUtterance(clean);
+    utter.lang = 'es-ES';
+    utter.rate = 1.02;
+    utter.pitch = 1.12; // Tono ligeramente agudo y simpático de robot pequeño
+
+    utter.onend = () => {
+        window.onZaithoSpeechEnded();
+    };
+    utter.onerror = () => {
+        window.onZaithoSpeechEnded();
+    };
+
+    synth.speak(utter);
+}
+
+// Callback global invocado al terminar de hablar (tanto desde Web como desde APK Nativo)
+window.onZaithoSpeechEnded = function() {
+    eyeState.isSpeaking = false;
+    if (!eyeState.readingDataActive) {
+        setExpression('happy');
+    }
+    if (continuousVoiceEnabled) {
+        scheduleNextListen(450);
+    }
+};
+
+// Callback global invocado cuando el reconocedor de voz (Web o APK Nativo) capta una frase
+window.onZaithoVoiceResult = function(transcript) {
+    eyeState.isListening = false;
+    if (!transcript || !transcript.trim()) {
+        if (continuousVoiceEnabled && !eyeState.isSpeaking) scheduleNextListen(600);
+        return;
+    }
+    console.log('🎙️ Escuchado:', transcript);
+    document.getElementById('ui-mic-status').textContent = `"${transcript}"`;
+    processUserMessage(transcript.trim());
+};
+
+function startListening() {
+    if (eyeState.isSpeaking || isProcessingAI) return;
+
+    // 1. Si corre en APK Nativo con SpeechRecognizer nativo de Android
+    if (window.ZaithoNative && typeof window.ZaithoNative.startListening === 'function') {
+        eyeState.isListening = true;
+        if (!eyeState.readingDataActive) setExpression('listening');
+        window.ZaithoNative.startListening();
+        return;
+    }
+
+    // 2. Web Speech Recognition API
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+        document.getElementById('ui-mic-status').textContent = 'Usa el APK de Zaitho o Chrome para voz';
+        return;
+    }
+
+    if (!recognition) {
+        recognition = new SpeechRec();
+        recognition.lang = 'es-ES';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+            eyeState.isListening = true;
+            document.getElementById('ui-mic-status').textContent = 'Escuchando...';
+            if (!eyeState.readingDataActive && eyeState.expression === 'neutral') {
+                setExpression('listening');
+            }
+        };
+
+        recognition.onresult = (event) => {
+            const text = event.results[0][0].transcript;
+            window.onZaithoVoiceResult(text);
+        };
+
+        recognition.onerror = (e) => {
+            eyeState.isListening = false;
+            if (e.error !== 'no-speech' && e.error !== 'aborted') {
+                console.warn('Mic notice:', e.error);
+            }
+        };
+
+        recognition.onend = () => {
+            eyeState.isListening = false;
+            if (continuousVoiceEnabled && !eyeState.isSpeaking && !isProcessingAI) {
+                scheduleNextListen(600);
+            }
+        };
+    }
+
+    try {
+        recognition.start();
+    } catch (e) {
+        // Ya estaba iniciado
+    }
+}
+
+function stopListening() {
+    eyeState.isListening = false;
+    if (window.ZaithoNative && typeof window.ZaithoNative.stopListening === 'function') {
+        window.ZaithoNative.stopListening();
+    }
+    if (recognition) {
+        try { recognition.abort(); } catch (e) {}
+    }
+}
+
+let listenTimer = null;
+function scheduleNextListen(delayMs = 500) {
+    if (listenTimer) clearTimeout(listenTimer);
+    listenTimer = setTimeout(() => {
+        if (!eyeState.isSpeaking && !isProcessingAI) {
+            startListening();
+        }
+    }, delayMs);
+}
+
+function toggleContinuousVoice() {
+    continuousVoiceEnabled = !continuousVoiceEnabled;
+    const btn = document.getElementById('btn-continuous-voice');
+    btn.textContent = `🎙️ Escucha Continua: ${continuousVoiceEnabled ? 'ON' : 'OFF'}`;
+    btn.classList.toggle('active', continuousVoiceEnabled);
+    if (continuousVoiceEnabled) startListening();
+    else stopListening();
+}
+
+function sendManualText() {
+    const inp = document.getElementById('manual-input');
+    const txt = inp.value.trim();
+    if (!txt) return;
+    inp.value = '';
+    toggleDrawer(false);
+    processUserMessage(txt);
+}
+
+
+// ============================================================================
+// 10. MOTOR DE CURIOSIDAD AUTÓNOMA (COMPORTAMIENTO VIVO CUANDO ESTÁ EN REPOSO)
+// ============================================================================
+let curiosityEnabled = true;
+let lastInteractionAt = Date.now();
+
+function toggleCuriosityMode() {
+    curiosityEnabled = !curiosityEnabled;
+    const btn = document.getElementById('btn-curiosity');
+    btn.textContent = `✨ Curiosidad: ${curiosityEnabled ? 'ON' : 'OFF'}`;
+    btn.classList.toggle('active', curiosityEnabled);
+}
+
+setInterval(() => {
+    if (!curiosityEnabled || eyeState.isSpeaking || isProcessingAI || eyeState.readingDataActive) return;
+    const idleSec = (Date.now() - lastInteractionAt) / 1000;
+
+    // Cada ~45 segundos de silencio, Zaitho hace un gesto curioso por sí solo
+    if (idleSec > 45 && Math.random() < 0.45) {
+        lastInteractionAt = Date.now();
+        setExpression('curious');
+        sendBLE('N'); // Mover chasis curiosamente a los lados
+
+        // 35% de las veces hace un comentario o pregunta curiosa espontánea
+        if (Math.random() < 0.35) {
+            const userName = memoryStore.userProfile.name || 'amigo';
+            const promptsCuriosos = [
+                `[Evento interno: Estás en silencio observando alrededor. Hazle una pregunta muy cortita y curiosa a ${userName} o comenta algo tierno sobre lo que estás pensando.]`
+            ];
+            processUserMessage(promptsCuriosos[0]);
+        } else {
+            setTimeout(() => setExpression('happy'), 3000);
+        }
+    }
+}, 8000);
+
+
+// ============================================================================
+// 11. GESTOS EN LA CARA (1 TOQUE = HABLAR/DESPERTAR, 3 TOQUES = PANEL OCULTO)
+// ============================================================================
+let tapCount = 0;
+let tapResetTimer = null;
+let longPressTimer = null;
+
+const stage = document.getElementById('face-stage');
+
+stage.addEventListener('pointerdown', () => {
+    longPressTimer = setTimeout(() => {
+        toggleDrawer(true);
+    }, 1400);
+});
+
+stage.addEventListener('pointerup', () => {
+    if (longPressTimer) clearTimeout(longPressTimer);
+});
+
+stage.addEventListener('click', () => {
+    // Solicitar pantalla completa y WakeLock en el primer toque
+    requestImmersiveMode();
+
+    tapCount++;
+    if (tapResetTimer) clearTimeout(tapResetTimer);
+
+    if (tapCount >= 3) {
+        tapCount = 0;
+        toggleDrawer(true);
+        return;
+    }
+
+    tapResetTimer = setTimeout(() => {
+        if (tapCount === 1) {
+            // Un toque en la cara: despertar / escuchar inmediatamente
+            setExpression('happy');
+            if (eyeState.isSpeaking && synth.speaking) {
+                synth.cancel();
+                eyeState.isSpeaking = false;
+            }
+            startListening();
+        }
+        tapCount = 0;
+    }, 320);
+});
+
+function toggleDrawer(open) {
+    const dr = document.getElementById('hidden-drawer');
+    dr.classList.toggle('open', open);
+}
+
+async function requestImmersiveMode() {
+    try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+        }
+    } catch (e) {}
+    try {
+        if ('wakeLock' in navigator) {
+            await navigator.wakeLock.request('screen');
+        }
+    } catch (e) {}
+}
+
+// ============================================================================
+// 12. LECTOR EN VIVO DE WHATSAPP / CORREO / NOTIFICACIONES
+// ============================================================================
+window.onIncomingNotification = function(appName, sender, message, icon = '💬') {
+    setExpression('surprised');
+    sendBLE('W'); // Pequeño wiggle físico para avisarte que llegó un mensaje
+    showFloatingData(`${icon} ${appName.toUpperCase()}`, sender, message, 8500);
+    if (!eyeState.isSpeaking && !isProcessingAI) {
+        speak(`¡Oye! Te acaba de llegar un ${appName} de ${sender}: ${message}`);
+    }
+};
+
+async function simulateIncomingAlert(appName, sender, message, icon) {
+    try {
+        await fetch(`${SERVER_BASE}/api/notifications`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appName, sender, message, icon })
+        });
+    } catch (e) {
+        window.onIncomingNotification(appName, sender, message, icon);
+    }
+}
+
+// Polling ligero de notificaciones entrantes (WhatsApp / Correo / Webhooks)
+setInterval(async () => {
+    try {
+        const res = await fetch(`${SERVER_BASE}/api/notifications?unread=true&markRead=true`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.notifications && data.notifications.length > 0) {
+            const n = data.notifications[0];
+            window.onIncomingNotification(n.appName, n.sender, n.message, n.icon || '💬');
+        }
+    } catch (e) {}
+}, 3000);
+
+// ============================================================================
+// 13. INICIALIZACIÓN (Con Visión YOLO + Rostros + Plantas Lista para Pruebas)
+// ============================================================================
+loadMemories();
+setExpression('happy');
+toggleYoloVision(true);
+</script>
+</body>
+</html>
